@@ -9,6 +9,11 @@ const {
 
 const ID_PROPERTY_NAME = 'fid'
 
+/**
+ * Creates an new instance of the Fir engine (no need to invoke with 'new')
+ * @param {object} options to pass into the engine
+ * @returns {object} a new engine
+ */
 export default ({ tickRate = 20 } = {}) => {
 
     const engine = new EventEmitter()
@@ -39,32 +44,45 @@ export default ({ tickRate = 20 } = {}) => {
 
     // ENTITIES //
 
+    /**
+     * Creates a new entity
+     * @param  {...string} componentTypes to add to the entity
+     * @returns {object} a new entity
+     */
     const createEntity = (...componentTypes) => {
         const entity = { componentTypes, componentIndices: {...componentTypes}, bitmask: 0 }
         engine.emit('entity-created', entity)
         return entity
     }
     
+    /**
+     * Add an entity to the engine
+     * @param {object} entity to add to the engine
+     */
     const addEntity = entity => {
         if(!entity.hasOwnProperty('id')) entity.id = Object.keys(entities).length
 
         entities[entity.id] = entity
 
         entity.componentTypes
-            .forEach(componentName => {
-                addComponent(entity, componentName)
+            .forEach(componentType => {
+                addComponent(entity, componentType)
             })
 
         engine.emit('entity-added', entity)
     }
 
+    /**
+     * Remove an entity from the engine
+     * @param {object} entity to remove from the engine
+     */
     const removeEntity = entity => {
 
         engine.emit('entity-removed::before', entity)
 
         entity.componentTypes
-            .forEach(componentName => {
-                removeComponent(entity.id, componentName)
+            .forEach(componentType => {
+                removeComponent(entity.id, componentType)
             })
 
         const removedEntity = entities[entity.id]
@@ -74,6 +92,10 @@ export default ({ tickRate = 20 } = {}) => {
         engine.emit('entity-removed', removedEntity)
     }
     
+    /**
+     * Get an existing entity from the engine
+     * @param {number} id of the entity to get
+     */
     const getEntity = id => {
         return entities[id]
     }
@@ -83,38 +105,61 @@ export default ({ tickRate = 20 } = {}) => {
     let bitflag = 1
     let componentCount = 0
     const registerComponentCalls = []
-    const registerComponent = (name, shape) => registerComponentCalls.push(() => {
+    /**
+     * Registers a new type of component with the engine
+     * @param {string} type of the component
+     * @param {object} shape of the component
+     */
+    const registerComponent = (type, shape) => registerComponentCalls.push(() => {
         componentCount++
-        component_store[name] = []
-        component_shape[name] = shape
-        component_entityId[name] = []
+        component_store[type] = []
+        component_shape[type] = shape
+        component_entityId[type] = []
 
-        component_bitflag[name] = bitflag
+        component_bitflag[type] = bitflag
         bitflag = 1 << componentCount // shift the bitflag by an offset of N components
 
-        engine.emit('component-registered', name, shape, bitflag)
+        engine.emit('component-registered', type, shape, bitflag)
     })
 
     const shapeWithValues = (shape, values={}) => Object.keys(shape)
             .reduce((acc,key) => Object.assign(acc, { [key]: values[key] || shape[key] }), {})
 
-    const createComponent = (name, values={}) => {
-        const shape = component_shape[name]
+    /**
+     * Create a new component
+     * @param {string} type of component to create
+     * @param {object} [values={}] values to instantiate the component with
+     * @returns {object} a new component
+     */
+    const createComponent = (type, values={}) => {
+        const shape = component_shape[type]
         
         const component = shapeWithValues(shape, values)
         
-        component.name = name
-        component.type = name
+        component.name = type
+        component.type = type
 
         engine.emit('component-created', component)
 
         return component
     }
 
+    /**
+     * Add a component to an entity
+     * @param {object} entity to add the component to
+     * @param {object} component to add to the entity
+     * @param {object} values to instantiate the component with
+     */
+    /**
+     * Add a component to an entity
+     * @param {number} entity.id to add the component to
+     * @param {string} component.type to add to the entity
+     * @param {object} values to instantiate the component with
+     */
     const addComponent = (entity, component, values={}) => {
         let type
         if(typeof component === 'string') type = component
-        if(typeof component === 'object') type = component.name
+        if(typeof component === 'object') type = component.type
 
         if(!component_bitflag.hasOwnProperty(type)) {
             console.warn(`Fir Warning: Tried to add an unregistered component type '${type}'`)
@@ -165,17 +210,22 @@ export default ({ tickRate = 20 } = {}) => {
         return component
     }
 
-    const removeComponent = (entityId, componentName) => {
+    /**
+     * Remove a component from an entity
+     * @param {number} entityId to remove the component from
+     * @param {string} type of component to remove from the entity
+     */
+    const removeComponent = (entityId, type) => {
 
         const entity = entities[entityId]
 
-        const component = component_store[componentName].find(c => c.id == entityId)
+        const component = component_store[type].find(c => c.id == entityId)
         if(!component) {
-            console.warn(`attempted to remove component type ${componentName} that doesn't exist on entity${entityId}`)
+            console.warn(`attempted to remove component type ${type} that doesn't exist on entity${entityId}`)
             return
         }
 
-        const flag = component_bitflag[componentName]
+        const flag = component_bitflag[type]
 
         // remove entity's component references from each relevant system
         systems
@@ -189,7 +239,7 @@ export default ({ tickRate = 20 } = {}) => {
                 }
             })
         
-        delete component_entityId[componentName][entityId]
+        delete component_entityId[type][entityId]
 
         // clear the bitflag and index on the entity
         entity.bitmask = bit.clear(entity.bitmask, flag)
@@ -197,11 +247,23 @@ export default ({ tickRate = 20 } = {}) => {
         engine.emit('component-removed', component, entity)
     }
     
+    /**
+     * 
+     * @param {number} entityId to get the component from
+     * @param {string} type of component to get
+     * @returns {object} a component
+     */
     const getComponent = (entityId, type) => {
         if(typeof entityId === 'object') entityId = entityId.id
         return component_entityId[type][entityId]
     }
 
+    /**
+     * 
+     * @param {number} entityId to update
+     * @param {string} type of component to update
+     * @param {object} values to update on the component
+     */
     const updateComponent = (entityId, type, values) => {
         if(typeof entityId === 'object') entityId = entityId.id
         return Object.assign(
@@ -227,6 +289,11 @@ export default ({ tickRate = 20 } = {}) => {
             Object.assign(acc, { [type]: component_store[type].filter(entityBitmaskComponentFilter(queryMask)) }), {})
     }
 
+    /**
+     * Creates a new view.
+     * A view is a group of entities who have a certain set of components.
+     * @param  {...string} componentTypes to create a view of
+     */
     const createView = (...componentTypes) => {
         const bitmask = createBitmask(...componentTypes)
         const cache = query(...componentTypes)
@@ -289,6 +356,13 @@ export default ({ tickRate = 20 } = {}) => {
     // SYSTEMS //
 
     const registerSystemCalls = []
+    /**
+     * 
+     * @param {string} name of the system
+     * @param {string[]} componentTypes that the system requires an entity to have
+     * @param {function} setup function to call when the engine starts
+     * @param {boolean} [copy=true] copy components into a local memory space (tends to increase performance)
+     */
     const registerSystem = (name, componentTypes, setup, copy=true) => registerSystemCalls.push(() => {
         const updateFn = setup()
         const arity = componentTypes.length
@@ -393,12 +467,18 @@ export default ({ tickRate = 20 } = {}) => {
         compileNewRegistrations()
     }
     
+    /**
+     * Start the engine
+     */
     engine.start = fn => {
         engine.init()
         engine.emit('start')
         loop()
     }
 
+    /**
+     * Use a plugin
+     */
     engine.use = fn => {
         fn(engine)
     }
