@@ -1,0 +1,22 @@
+{
+  "name": "fir",
+  "version": "0.0.1",
+  "description": "Data-oriented, runtime-composable ECS game engine.",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/NateTheGreatt/fir.git"
+  },
+  "author": "Nathaniel Martin",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/NateTheGreatt/fir/issues"
+  },
+  "homepage": "https://github.com/NateTheGreatt/fir#readme",
+  "dependencies": {
+    "eventemitter3": "^4.0.0"
+  }
+}
