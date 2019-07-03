@@ -249,7 +249,7 @@ export default ({ tickRate = 20 } = {}) => {
                     const componentIndex = component_store[type].findIndex(c => c.id == entity.id)
                     const component = component_store[type][componentIndex]
                     const cacheType = cache[type]
-                    if(copy) { // speed
+                    if(copy) { // tends to speed things up
                         const copiedComponent = completeAssign({}, component)
                         cacheType.push(copiedComponent)
                         component_store[type][componentIndex] = cacheType[cacheType.length-1]
@@ -289,7 +289,7 @@ export default ({ tickRate = 20 } = {}) => {
     // SYSTEMS //
 
     const registerSystemCalls = []
-    const registerSystem = (name, componentTypes, setup, copy=false) => registerSystemCalls.push(() => {
+    const registerSystem = (name, componentTypes, setup, copy=true) => registerSystemCalls.push(() => {
         const updateFn = setup()
         const arity = componentTypes.length
 
