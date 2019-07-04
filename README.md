@@ -129,12 +129,12 @@ engine.on('jitterbug-happened', (position, xJitter) => {
 
 ```
 
-### Generic Logic vs Game-Specific Logic
+### Generic Logic vs Gamemode-Specific Logic
 
 The best rule of thumb to keep in mind while developing in Fir is this:
 
-If the logic is generic and doesn't necessarily apply only to your game, then the logic should be contained within a system.
-If the logic is instead specific to the game that you're creating, the logic should be contained within an event listener outside of the emitting system.
+Generic logic that doesn't necessarily apply only to your gamemode should be contained within a system.
+Gamemode-specific logic should be handled by an event listener, defined outside of the emitting system.
 
 When breaking up features into smaller system pieces, the generic information should flow from system-to-system within components.
 Any and all game-specific information should be delegated and handled in an event listener instead. The game "mode" logic can then react appropriately to the vision of the game, meanwhile the system logic remains reusable for other types games or gamemodes.
