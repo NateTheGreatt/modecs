@@ -80,8 +80,10 @@ export default ({ tickRate = 20 } = {}) => {
      * @param {object} entity to remove from the engine
      */
     const removeEntity = entity => {
+        if(entity === undefined)
+            throw new Error('Fir Error: Entity is undefined')
 
-        engine.emit('entity-removed::before', entity)
+            engine.emit('entity-removed::before', entity)
 
         entity.componentTypes
             .forEach(componentType => {
