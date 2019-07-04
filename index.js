@@ -60,6 +60,9 @@ export default ({ tickRate = 20 } = {}) => {
      * @param {object} entity to add to the engine
      */
     const addEntity = entity => {
+        if(entity === undefined)
+            throw new Error('Fir Error: Entity is undefined')
+
         if(!entity.hasOwnProperty('id')) entity.id = Object.keys(entities).length
 
         entities[entity.id] = entity
