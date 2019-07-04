@@ -60,17 +60,17 @@ Fir follows the [Unix Philosophy](https://en.wikipedia.org/wiki/Unix_philosophy)
 
 Not only can you register and add new components to entities during runtime, but new systems can be registered during runtime as well (after `engine.start()` has been called and the update loop is running). This creates an environment much like Unity3D or Unreal Engine provides, where the game world constantly runs while the user edits features in real-time without restarting the IDE. Re-registering something with the same name simply overwrites the previous registration.
 
-### Rules
-
-Do not listen to events inside of systems. Information should only enter a system via components. However, information can exit a system via both components and events.
-
-Components should be as small and flat as possible to ensure maximum performance.
-
 ### Events
 
 The Fir engine inherits [`eventemitter3`](https://github.com/primus/eventemitter3). The prime goal of this is to keep communication decoupled throughout all of the game's individual features, supplementing the fact that systems can be added and removed during runtime.
 
 This creates a powerful paradigm in which you can create entirely "pluggable" features that can interact with systems both registered and yet to be registered.
+
+### Rules
+
+Do not listen to events inside of systems. Information should only enter a system via components. However, information can exit a system via both components and events.
+
+Components should be as small and flat as possible to ensure maximum performance.
 
 ### Modes
 
