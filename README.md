@@ -137,6 +137,6 @@ Generic logic that doesn't necessarily apply only to your gamemode should be con
 Gamemode-specific logic should be handled by an event listener, defined outside of the emitting system.
 
 When breaking up features into smaller system pieces, the generic information should flow from system-to-system within components.
-Any and all game-specific information should be delegated and handled in an event listener instead. The game "mode" logic can then react appropriately to the vision of the game, meanwhile the system logic remains reusable for other types games or gamemodes.
+Any and all gamemode-specific information should be delegated and handled in an event listener instead. The gamemode logic can then react appropriately to the vision of the game, meanwhile the system logic remains reusable for other types of gamemodes.
 
 This is more or less a guideline to follow, and not necessarily a rule to abide by. Most of the time you will need to create systems with game-specific logic in them until you are able to discover what behavior is generic and what behavior is specific.
