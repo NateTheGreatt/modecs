@@ -24,7 +24,6 @@ engine.registerSystem(
     return (position, target) => {
       position.x += target.x * speed * engine.time.delta
       position.y += target.y * speed * engine.time.delta
-      target.x = target.y = 0
     }
   }
 )
@@ -33,7 +32,7 @@ const entity1 = engine.createEntity('POSITION', 'TARGET')
 
 const entity2 = engine.createEntity()
 engine.addComponent(entity2, 'POSITION', { x: 50 })
-engine.addComponent(entity2.id, 'TARGET', { x: 1, y: 2 })
+engine.addComponent(entity2.id, 'TARGET', { x: 1, y: 1 }) // entity2 will move southeast
 
 engine.addEntity(entity1)
 engine.addEntity(entity2)
