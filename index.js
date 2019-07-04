@@ -83,7 +83,7 @@ export default ({ tickRate = 20 } = {}) => {
         if(entity === undefined)
             throw new Error('Fir Error: Entity is undefined')
 
-            engine.emit('entity-removed::before', entity)
+        engine.emit('entity-removed::before', entity)
 
         entity.componentTypes
             .forEach(componentType => {
