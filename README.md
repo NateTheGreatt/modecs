@@ -72,7 +72,7 @@ Not only can you register and add new components to entities during runtime, but
 
 The Fir engine inherits [`eventemitter3`](https://github.com/primus/eventemitter3). The prime goal of this is to keep communication decoupled throughout all of the game's individual features, supplementing the fact that systems can be added and removed during runtime.
 
-This creates a powerful paradigm in which you can create entirely "pluggable" features that can interact with previously registered systems.
+This creates a powerful paradigm in which you can create entirely "pluggable" features that can interact with systems both registered and yet to be registered.
 
 ### Modes
 
@@ -130,3 +130,13 @@ engine.on('jitterbug-happened', (position, xJitter) => {
 })
 
 ```
+
+### Generic Logic vs Game-Specific Logic
+
+With those rules in mind, the best rule of thumb to keep in mind while developing in Fir is this:
+
+If the logic you are implementing is specific to the game that you're creating, the logic should be contained within an event listener.
+If the logic is instead generic, and doesn't necessarily apply only to your game, then the logic can be contained within a system.
+
+When breaking up features into smaller system pieces, the generic information should flow from system-to-system within components.
+If that information is game-specific, it should be delegated to be handled in an event listener instead.
