@@ -166,10 +166,8 @@ export default ({ tickRate = 20 } = {}) => {
         if(typeof component === 'string') type = component
         if(typeof component === 'object') type = component.type
 
-        if(!component_bitflag.hasOwnProperty(type)) {
-            console.warn(`Fir Warning: Tried to add an unregistered component type '${type}'`)
-            return
-        }
+        if(!component_bitflag.hasOwnProperty(type)) 
+            throw new Error(`Fir Error: Tried to add an unregistered component type '${type}'`)
 
         const flag = component_bitflag[type]
         
@@ -290,8 +288,11 @@ export default ({ tickRate = 20 } = {}) => {
 
     const query = (...componentTypes) => {
         const queryMask = createBitmask(...componentTypes)
-        return componentTypes.reduce((acc,type) => 
-            Object.assign(acc, { [type]: component_store[type].filter(entityBitmaskComponentFilter(queryMask)) }), {})
+        return componentTypes.reduce((acc,type) => {
+            if(!component_store.hasOwnProperty(type))
+                throw new Error(`Fir Error: '${type}' is not a registered component type`)
+            return Object.assign(acc, { [type]: component_store[type].filter(entityBitmaskComponentFilter(queryMask)) });
+        }, {})
     }
 
     /**
@@ -366,9 +367,10 @@ export default ({ tickRate = 20 } = {}) => {
      * @param {string} name of the system
      * @param {string[]} componentTypes that the system requires an entity to have
      * @param {function} setup function to call when the engine starts
+     * @param {number} frequency of the system in millihertz (invoked every N milliseconds)
      * @param {boolean} [copy=true] copy components into a local memory space (tends to increase performance)
      */
-    const registerSystem = (name, componentTypes, setup, copy=true) => registerSystemCalls.push(() => {
+    const registerSystem = (name, componentTypes, setup, frequency, copy=true) => registerSystemCalls.push(() => {
         const updateFn = setup()
         const arity = componentTypes.length
 
@@ -385,6 +387,7 @@ export default ({ tickRate = 20 } = {}) => {
         else if(arity==5) update = i => updateFn(parameters[0][i], parameters[1][i], parameters[2][i], parameters[3][i], parameters[4][i])
         else if(arity==6) update = i => updateFn(parameters[0][i], parameters[1][i], parameters[2][i], parameters[3][i], parameters[4][i], parameters[5][i])
 
+        let frequencyCounter = frequency
         const system = {
             name,
             componentTypes,
@@ -398,6 +401,7 @@ export default ({ tickRate = 20 } = {}) => {
                 view.remove(entity)
             },
             process: () => {
+                // frequencyCounter -= engine.time.delta
                 // process system logic
                 for(let i = 0; i < view.entities.length; i++) {
                     update(i)
@@ -431,6 +435,7 @@ export default ({ tickRate = 20 } = {}) => {
     let previous = time.now = isClient ? performance.now() : hrtimeMs()
     
     const tickLengthMs = 1000 / TICK_RATE
+    let frequencyCounter
     const loop = () => {
         if(isServer) setTimeout(loop, tickLengthMs)
         if(isClient) window.requestAnimationFrame(loop)
@@ -448,7 +453,6 @@ export default ({ tickRate = 20 } = {}) => {
         time.tick++
     }
 
-    
     Object.assign(engine, {
         ID_PROPERTY_NAME,
         createView,
