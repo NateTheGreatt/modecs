@@ -120,10 +120,10 @@ engine.registerSystem(
 engine.on('jitterbug-happened', (position, xJitter) => {
   const entityId = position.id
 
-  // stop the jittering
-  engine.removeComponent(entityId)
+  // stop the jittering behavior
+  engine.removeComponent(entityId, 'JITTER')
 
-  // start the jitterbugging
+  // start the jitterbugging behavior, whatever that may be
   engine.addComponent(entityId, 'JITTERBUG', {amount: xJitter})
 })
 
