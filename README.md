@@ -138,3 +138,5 @@ If the logic is instead specific to the game that you're creating, the logic sho
 
 When breaking up features into smaller system pieces, the generic information should flow from system-to-system within components.
 Any and all game-specific information should be delegated and handled in an event listener instead. The game "mode" logic can then react appropriately to the vision of the game, meanwhile the system logic remains reusable for other types games or gamemodes.
+
+This is more or less a guideline to follow, and not necessarily a rule to abide by. Most of the time you will need to create systems with game-specific logic in them until you are able to discover what behavior is generic and what behavior is specific.
