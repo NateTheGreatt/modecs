@@ -62,9 +62,9 @@ Not only can you register and add new components to entities during runtime, but
 
 ### Rules
 
-1. Information should only enter a system via components.
-2. Information should exit a system via both components and events.
-3. Components should be as small and flat as possible to ensure maximum performance.
+Do not listen to events inside of systems. Information should only enter a system via components. However, information can exit a system via both components and events.
+
+Components should be as small and flat as possible to ensure maximum performance.
 
 ### Events
 
@@ -131,10 +131,10 @@ engine.on('jitterbug-happened', (position, xJitter) => {
 
 ### Generic Logic vs Game-Specific Logic
 
-With those rules in mind, the best rule of thumb to keep in mind while developing in Fir is this:
+The best rule of thumb to keep in mind while developing in Fir is this:
 
-If the logic you are implementing is specific to the game that you're creating, the logic should be contained within an event listener.
-If the logic is instead generic, and doesn't necessarily apply only to your game, then the logic can be contained within a system.
+If the logic is generic and doesn't necessarily apply only to your game, then the logic should be contained within a system.
+If the logic is instead specific to the game that you're creating, the logic should be contained within an event listener outside of the emitting system.
 
 When breaking up features into smaller system pieces, the generic information should flow from system-to-system within components.
-If that information is game-specific, it should be delegated to be handled in an event listener instead.
+Any and all game-specific information should be delegated and handled in an event listener instead. The game "mode" logic can then react appropriately to the vision of the game, meanwhile the system logic remains reusable for other types games or gamemodes.
