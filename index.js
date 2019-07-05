@@ -223,7 +223,8 @@ export default ({ tickRate = 20 } = {}) => {
 
         const entity = entities[entityId]
 
-        const component = component_store[type].find(c => c.id == entityId)
+        const index = component_store[type].findIndex(c => c.id == entityId)
+        const component = component_store[type].splice(index, 1)[0]
         if(!component) {
             throw new Error(`Fir Error: Component type ${type} does not exist on entity${entityId}`)
         }
@@ -246,7 +247,8 @@ export default ({ tickRate = 20 } = {}) => {
 
         // clear the bitflag and index on the entity
         entity.bitmask = bit.clear(entity.bitmask, flag)
-        
+        entity.componentTypes = entity.componentTypes.filter(t => t !== type)
+
         engine.emit('component-removed', component, entity)
     }
     
@@ -377,7 +379,7 @@ export default ({ tickRate = 20 } = {}) => {
      * @param {string[]} componentTypes that the system requires an entity to have
      * @param {function} setup function to call when the engine starts
      * @param {number} frequency of the system in millihertz (invoked every N milliseconds)
-     * @param {boolean} [swap=false] swap components into a local memory space (tends to increase performance)
+     * @param {boolean} [swap=true] swap components into a local memory space (tends to increase performance)
      */
     const registerSystem = (name, componentTypes, setup, frequency, swap=false) => registerSystemCalls.push(() => {
         const updateFn = setup()
