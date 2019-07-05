@@ -5,7 +5,7 @@
   "main": "index.js",
   "module": "index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "jest"
   },
   "repository": {
     "type": "git",
@@ -19,5 +19,8 @@
   "homepage": "https://github.com/NateTheGreatt/fir#readme",
   "dependencies": {
     "eventemitter3": "^4.0.0"
+  },
+  "devDependencies": {
+    "jest": "^24.8.0"
   }
 }
