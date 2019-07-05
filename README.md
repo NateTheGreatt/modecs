@@ -82,8 +82,9 @@ Modes are self-contained packages of code that register new systems and componen
 
 E.g.
 
+`/JitterMode.js`
 ```javascript
-const JitterMode = engine => {
+export default engine => {
 
   engine.registerComponent('JITTER', {amount: 5})
 
@@ -106,8 +107,11 @@ const JitterMode = engine => {
   )
 
 }
+```
 
-engine.use(JitterMode)
+`/main.js`
+```javascript
+engine.use(require('./JitterMode'))
 
 engine.registerComponent('JITTERBUG', {amount:0})
 engine.registerSystem(
