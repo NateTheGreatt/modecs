@@ -195,16 +195,16 @@ export default ({ tickRate = 20 } = {}) => {
         // entity.componentIndices[type] = storeIndex
         entity.componentTypes.push(type)
 
-        systems
-            // only relevant systems
-            .filter(system => bit.has(system.bitmask, flag))
-            .forEach(system => {
-                // if entity matches with system
-                if(bit.check(entity.bitmask, system.bitmask)) {
-                    // add entity to system and let system get components
-                    system.add(entity)
-                }
-            })
+        systems.forEach(system => {
+            // system must have component type
+            if(!bit.has(system.bitmask, flag)) return
+
+            // entity must match with system
+            if(!bit.check(entity.bitmask, system.bitmask)) return
+
+            // add entity to system and let system get components
+            system.add(entity)
+        })
 
         component_entityId[type][entity.id] = component
 
@@ -224,23 +224,22 @@ export default ({ tickRate = 20 } = {}) => {
 
         const component = component_store[type].find(c => c.id == entityId)
         if(!component) {
-            console.warn(`attempted to remove component type ${type} that doesn't exist on entity${entityId}`)
-            return
+            throw new Error(`Fir Error: Component type ${type} does not exist on entity${entityId}`)
         }
 
         const flag = component_bitflag[type]
 
         // remove entity's component references from each relevant system
-        systems
-            // only relevant systems
-            .filter(system => bit.has(system.bitmask, flag))
-            .forEach(system => {
-                // if entity matches with system
-                if(bit.check(entity.bitmask, system.bitmask)) {
-                    // remove entity from system
-                    system.remove(entity)
-                }
-            })
+        systems.forEach(system => {
+            // system must have component type
+            if(!bit.has(system.bitmask, flag)) return
+
+            // entity must match with system
+            if(!bit.check(entity.bitmask, system.bitmask)) return
+
+            // remove entity from system
+            system.remove(entity)
+        })
         
         delete component_entityId[type][entityId]
 
@@ -344,6 +343,11 @@ export default ({ tickRate = 20 } = {}) => {
                 })
                 
                 delete entityId_localIndex[entity.id]
+
+                Object.keys(entityId_localIndex)
+                    .forEach(entityId => {
+                        entityId_localIndex[entityId] -= 1
+                    })
             },
             // sort global arrays with this bitmask grouped together at the beginning of the array
             // should prioritize views with the most entities (group components at the beginning of their arrays by this bitmask)
@@ -454,6 +458,7 @@ export default ({ tickRate = 20 } = {}) => {
     }
 
     Object.assign(engine, {
+        get components() { return Object.keys(component_shape) },
         ID_PROPERTY_NAME,
         createView,
         registerSystem,
