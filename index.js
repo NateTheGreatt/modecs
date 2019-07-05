@@ -4,7 +4,8 @@ const {
     shiftDelete,
     hrtimeMs,
     isServer,
-    isClient
+    isClient,
+    completeAssign
 } = require('./utils')
 
 const ID_PROPERTY_NAME = 'fid'
@@ -27,7 +28,7 @@ export default ({ tickRate = 20 } = {}) => {
     // entity IDs are the index
     const entities = []
     
-    // entity.id => ______
+    // entity.id => bitmask
     const entityId_bitmask = {}
     
     const bitmask_entityIds = {}
@@ -195,16 +196,16 @@ export default ({ tickRate = 20 } = {}) => {
         // entity.componentIndices[type] = storeIndex
         entity.componentTypes.push(type)
 
-        systems.forEach(system => {
-            // system must have component type
-            if(!bit.has(system.bitmask, flag)) return
-
-            // entity must match with system
-            if(!bit.check(entity.bitmask, system.bitmask)) return
-
-            // add entity to system and let system get components
-            system.add(entity)
-        })
+        systems
+            // only relevant systems
+            .filter(system => bit.has(system.bitmask, flag))
+            .forEach(system => {
+                // if entity matches with system
+                if(bit.check(entity.bitmask, system.bitmask)) {
+                    // add entity to system and let system get components
+                    system.add(entity)
+                }
+            })
 
         component_entityId[type][entity.id] = component
 
@@ -230,16 +231,16 @@ export default ({ tickRate = 20 } = {}) => {
         const flag = component_bitflag[type]
 
         // remove entity's component references from each relevant system
-        systems.forEach(system => {
-            // system must have component type
-            if(!bit.has(system.bitmask, flag)) return
-
-            // entity must match with system
-            if(!bit.check(entity.bitmask, system.bitmask)) return
-
-            // remove entity from system
-            system.remove(entity)
-        })
+        systems
+            // only relevant systems
+            .filter(system => bit.has(system.bitmask, flag))
+            .forEach(system => {
+                // if entity matches with system
+                if(bit.check(entity.bitmask, system.bitmask)) {
+                    // remove entity from system
+                    system.remove(entity)
+                }
+            })
         
         delete component_entityId[type][entityId]
 
@@ -313,7 +314,7 @@ export default ({ tickRate = 20 } = {}) => {
             cache,
             bitmask,
             entities: localEntities,
-            add: (entity, copy=true) => {
+            add: (entity, swap) => {
                 localEntities.push(entity.id)
                 
                 // cache the index of new entity (entity + components will have the same index within the local cache arrays)
@@ -323,9 +324,10 @@ export default ({ tickRate = 20 } = {}) => {
                     const componentIndex = component_store[type].findIndex(c => c.id == entity.id)
                     const component = component_store[type][componentIndex]
                     const cacheType = cache[type]
-                    if(copy) { // tends to speed things up
-                        const copiedComponent = completeAssign({}, component)
+                    if(swap) {
+                        const copiedComponent = Object.assign({}, component_store[type][componentIndex])
                         cacheType.push(copiedComponent)
+                         // TODO: bugged - need to prevent other systems from losing the reference
                         component_store[type][componentIndex] = copiedComponent
                     } else {
                         cacheType.push(component)
@@ -375,9 +377,9 @@ export default ({ tickRate = 20 } = {}) => {
      * @param {string[]} componentTypes that the system requires an entity to have
      * @param {function} setup function to call when the engine starts
      * @param {number} frequency of the system in millihertz (invoked every N milliseconds)
-     * @param {boolean} [copy=true] copy components into a local memory space (tends to increase performance)
+     * @param {boolean} [swap=false] swap components into a local memory space (tends to increase performance)
      */
-    const registerSystem = (name, componentTypes, setup, frequency, copy=true) => registerSystemCalls.push(() => {
+    const registerSystem = (name, componentTypes, setup, frequency, swap=false) => registerSystemCalls.push(() => {
         const updateFn = setup()
         const arity = componentTypes.length
 
@@ -402,7 +404,7 @@ export default ({ tickRate = 20 } = {}) => {
             entities: view.entities,
             prioritize: view.prioritize,
             add: entity => {
-                view.add(entity, copy)
+                view.add(entity, swap)
             },
             remove: entity => {
                 view.remove(entity)
