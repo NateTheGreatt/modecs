@@ -304,8 +304,10 @@ export default ({ tickRate = 20 } = {}) => {
         const cache = query(...componentTypes)
 
         const entityId_localIndex = {}
-
+        
         const localEntities = cache[componentTypes[0]].map(c => c.id)
+        
+        // const localIndex_entityId = [...localEntities]
 
         return {
             cache,
@@ -315,7 +317,7 @@ export default ({ tickRate = 20 } = {}) => {
                 localEntities.push(entity.id)
                 
                 // cache the index of new entity (entity + components will have the same index within the local cache arrays)
-                entityId_localIndex[entity.id] = localEntities.length - 1
+                // entityId_localIndex[entity.id] = localEntities.length - 1
 
                 componentTypes.forEach(type => {
                     const componentIndex = component_store[type].findIndex(c => c.id == entity.id)
@@ -324,7 +326,7 @@ export default ({ tickRate = 20 } = {}) => {
                     if(copy) { // tends to speed things up
                         const copiedComponent = completeAssign({}, component)
                         cacheType.push(copiedComponent)
-                        component_store[type][componentIndex] = cacheType[cacheType.length-1]
+                        component_store[type][componentIndex] = copiedComponent
                     } else {
                         cacheType.push(component)
                     }
@@ -332,7 +334,8 @@ export default ({ tickRate = 20 } = {}) => {
             },
             remove: entity => {
                 // index to remove should be the same for entity and each component
-                let i = entityId_localIndex[entity.id]
+                // let i = entityId_localIndex[entity.id]
+                const i = localEntities.findIndex(id => id == entity.id)
 
                 if(i == undefined) return
                 
@@ -342,12 +345,12 @@ export default ({ tickRate = 20 } = {}) => {
                     shiftDelete(cache[type], i)
                 })
                 
-                delete entityId_localIndex[entity.id]
+                // delete entityId_localIndex[entity.id]
 
-                Object.keys(entityId_localIndex)
-                    .forEach(entityId => {
-                        entityId_localIndex[entityId] -= 1
-                    })
+                // Object.keys(entityId_localIndex)
+                //     .forEach(entityId => {
+                //         entityId_localIndex[entityId] -= 1
+                //     })
             },
             // sort global arrays with this bitmask grouped together at the beginning of the array
             // should prioritize views with the most entities (group components at the beginning of their arrays by this bitmask)
