@@ -11,7 +11,7 @@ const {
 const ID_PROPERTY_NAME = 'fid'
 
 /**
- * Creates an new instance of the Fir engine (no need to invoke with 'new')
+ * Creates an new instance of the Modecs engine (no need to invoke with 'new')
  * @param {object} options to pass into the engine
  * @returns {object} a new engine
  */
@@ -62,7 +62,7 @@ export default ({ tickRate = 20 } = {}) => {
      */
     const addEntity = entity => {
         if(entity === undefined)
-            throw new Error('Fir Error: Entity is undefined')
+            throw new Error('Modecs Error: Entity is undefined')
 
         if(!entity.hasOwnProperty('id')) entity.id = Object.keys(entities).length
 
@@ -82,7 +82,7 @@ export default ({ tickRate = 20 } = {}) => {
      */
     const removeEntity = entity => {
         if(entity === undefined)
-            throw new Error('Fir Error: Entity is undefined')
+            throw new Error('Modecs Error: Entity is undefined')
 
         engine.emit('entity-removed::before', entity)
 
@@ -168,7 +168,7 @@ export default ({ tickRate = 20 } = {}) => {
         if(typeof component === 'object') type = component.type
 
         if(!component_bitflag.hasOwnProperty(type)) 
-            throw new Error(`Fir Error: Tried to add an unregistered component type '${type}'`)
+            throw new Error(`Modecs Error: Tried to add an unregistered component type '${type}'`)
 
         const flag = component_bitflag[type]
         
@@ -226,7 +226,7 @@ export default ({ tickRate = 20 } = {}) => {
         const index = component_store[type].findIndex(c => c.id == entityId)
         const component = component_store[type].splice(index, 1)[0]
         if(!component) {
-            throw new Error(`Fir Error: Component type ${type} does not exist on entity${entityId}`)
+            throw new Error(`Modecs Error: Component type ${type} does not exist on entity${entityId}`)
         }
 
         const flag = component_bitflag[type]
@@ -292,7 +292,7 @@ export default ({ tickRate = 20 } = {}) => {
         const queryMask = createBitmask(...componentTypes)
         return componentTypes.reduce((acc,type) => {
             if(!component_store.hasOwnProperty(type))
-                throw new Error(`Fir Error: '${type}' is not a registered component type`)
+                throw new Error(`Modecs Error: '${type}' is not a registered component type`)
             return Object.assign(acc, { [type]: component_store[type].filter(entityBitmaskComponentFilter(queryMask)) });
         }, {})
     }

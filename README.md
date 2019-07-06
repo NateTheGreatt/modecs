@@ -1,11 +1,11 @@
-# :evergreen_tree: fir :evergreen_tree:
+# :evergreen_tree: modecs :evergreen_tree:
 Fast, data-oriented, runtime-composable [ECS](https://en.wikipedia.org/wiki/Entity_component_system) library written in JavaScript.
 
 ## Introduction
 
 ### Install
 ```
-npm i fir
+npm i modecs
 ```
 
 ### Example
@@ -13,8 +13,8 @@ npm i fir
 If you are familiar with the concept of an ECS already, this should look relatively familiar:
 
 ```javascript
-const Fir = require('fir')
-const engine = Fir()
+const Modecs = require('modecs')
+const engine = Modecs()
 
 // register components with a name and shape
 engine.registerComponent('POSITION', { x: 0, y: 0 })
@@ -55,7 +55,7 @@ engine.start()
 
 ## Philosophy
 
-With Fir it is best to follow the [Unix Philosophy](https://en.wikipedia.org/wiki/Unix_philosophy). In general, this means that you should strive to make your systems and components as simple as possible. If this means breaking one large feature into multiple smaller systems that pass information through components, generally that will be more maintainable, composable, and reusable than larger monolithic systems will be. That said, each system incurs one loop through all of its own entities, so if performance is an important aspect of the system it may be better to design it monolithically. Use your best discretion here.
+With Modecs it is best to follow the [Unix Philosophy](https://en.wikipedia.org/wiki/Unix_philosophy). In general, this means that you should strive to make your systems and components as simple as possible. If this means breaking one large feature into multiple smaller systems that pass information through components, generally that will be more maintainable, composable, and reusable than larger monolithic systems will be. That said, each system incurs one loop through all of its own entities, so if performance is an important aspect of the system it may be better to design it monolithically. Use your best discretion here.
 
 ### Runtime Composability
 
@@ -63,7 +63,7 @@ Not only can you register and add new components to entities during runtime, but
 
 ### Events
 
-The Fir engine inherits [`eventemitter3`](https://github.com/primus/eventemitter3). The prime goal of this is to keep communication decoupled throughout all of the game's individual features, supplementing the fact that systems can be added and removed during runtime.
+The Modecs engine inherits [`eventemitter3`](https://github.com/primus/eventemitter3). The prime goal of this is to keep communication decoupled throughout all of the game's individual features, supplementing the fact that systems can be added and removed during runtime.
 
 This creates a powerful paradigm in which you can create entirely "pluggable" features that can interact with systems both registered and yet to be registered. 
 
@@ -139,7 +139,7 @@ engine.on('jitterbug-happened', (position, xJitter) => {
 
 ## Reusability
 
-If you have developed a few games in the past, you may be familiar with the feeling of redundancy when re-implementing similar features over and over again in different games. Fir, and ECS in general, attempts to provide a method to the madness that this creates.
+If you have developed a few games in the past, you may be familiar with the feeling of redundancy when re-implementing similar features over and over again in different games. Modecs, and ECS in general, attempts to provide a method to the madness that this creates.
 
 ### Generic Logic vs Gamemode-Specific Logic
 
@@ -157,10 +157,10 @@ As time goes on, you may notice that things are more reusable and easier to debu
 
 ### Declarative vs Imperative Logic
 
-There are two levels of logic at-play in the Fir framework.
+There are two levels of logic at-play in the Modecs framework.
 
 System update loops and event listeners contain imperative code. Imperative logic describes the behavior and exactly how it should happen.
 
 However, when emitting events from within system update loops, and when defining the event listeners that react to those events, declarative logic is in use. Declarative logic describes reactions, when and what should happen. We do not care how things are done at this level of logic.
 
-Utilizing both of these paradigms of logic in-tandem with one another is the bread and butter of Fir.
+Utilizing both of these paradigms of logic in-tandem with one another is the bread and butter of Modecs.

@@ -35,7 +35,7 @@
 
 ## index
 
-Creates an new instance of the Fir engine (no need to invoke with 'new')
+Creates an new instance of the Modecs engine (no need to invoke with 'new')
 
 ### Parameters
 

@@ -1,9 +1,9 @@
 /* eslint-env jest */
-const Fir = require('../index')
+const Modecs = require('../index')
 
 
-describe('Fir', () => {
-    const engine = Fir()
+describe('Modecs', () => {
+    const engine = Modecs()
 
     it('should register a component', () => {
         engine.registerComponent('POSITION', {x:0,y:0})

@@ -1,5 +1,5 @@
 {
-  "name": "fir",
+  "name": "modecs",
   "version": "0.0.1",
   "description": "Data-oriented, runtime-composable ECS library.",
   "main": "index.js",
@@ -9,14 +9,14 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/NateTheGreatt/fir.git"
+    "url": "git+https://github.com/NateTheGreatt/modecs.git"
   },
   "author": "Nathaniel Martin",
   "license": "MIT",
   "bugs": {
-    "url": "https://github.com/NateTheGreatt/fir/issues"
+    "url": "https://github.com/NateTheGreatt/modecs/issues"
   },
-  "homepage": "https://github.com/NateTheGreatt/fir#readme",
+  "homepage": "https://github.com/NateTheGreatt/modecs#readme",
   "dependencies": {
     "eventemitter3": "^4.0.0"
   },
