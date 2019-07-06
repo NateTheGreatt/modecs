@@ -117,13 +117,30 @@ export default ({ tickRate = 20 } = {}) => {
      * @param {object} shape of the component
      */
     const registerComponent = (type, shape) => registerComponentCalls.push(() => {
-        componentCount++
-        component_store[type] = []
-        component_shape[type] = shape
-        component_entityId[type] = []
 
-        component_bitflag[type] = bitflag
-        bitflag = 1 << componentCount // shift the bitflag by an offset of N components
+        // re-registration
+        if(component_store.hasOwnProperty(type)) {
+            const shapeKeys = Object.keys(shape)
+
+            // update each existing component with the new shape
+            component_store[type].forEach(component => {
+                const cKeys = Object.keys(component)
+                const newKeys = shapeKeys.reduce((a,k) => !cKeys.includes(k), [])
+                newKeys.forEach(key => { component[key] = shape[key] })
+            })
+
+            component_shape[type] = shape
+
+        } else {
+
+            componentCount++
+            component_store[type] = []
+            component_shape[type] = shape
+            component_entityId[type] = []
+
+            component_bitflag[type] = bitflag
+            bitflag = 1 << componentCount // shift the bitflag by an offset of N components
+        }
 
         engine.emit('component-registered', type, shape, bitflag)
     })
