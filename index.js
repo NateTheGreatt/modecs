@@ -8,27 +8,28 @@ const {
     completeAssign
 } = require('./utils')
 
-const ID_PROPERTY_NAME = 'fid'
+
 
 /**
  * Creates an new instance of the Modecs engine (no need to invoke with 'new')
  * @param {object} options to pass into the engine
  * @returns {object} a new engine
  */
-export default ({ tickRate = 20 } = {}) => {
+export default ({ tickRate = 20, idName = 'id' } = {}) => {
 
     const engine = new EventEmitter()
 
     // CONSTANTS //
 
     const TICK_RATE = tickRate
+    const ID_PROPERTY_NAME = idName
 
     // ARRAYS & HASHMAPS // 
     
     // entity IDs are the index
     const entities = []
     
-    // entity.id => bitmask
+    // entity[ID_PROPERTY_NAME] => bitmask
     const entityId_bitmask = {}
     
     const bitmask_entityIds = {}
@@ -64,9 +65,9 @@ export default ({ tickRate = 20 } = {}) => {
         if(entity === undefined)
             throw new Error('Modecs Error: Entity is undefined')
 
-        if(!entity.hasOwnProperty('id')) entity.id = Object.keys(entities).length
+        if(!entity.hasOwnProperty('id')) entity[ID_PROPERTY_NAME] = Object.keys(entities).length
 
-        entities[entity.id] = entity
+        entities[entity[ID_PROPERTY_NAME]] = entity
 
         entity.componentTypes
             .forEach(componentType => {
@@ -88,12 +89,12 @@ export default ({ tickRate = 20 } = {}) => {
 
         entity.componentTypes
             .forEach(componentType => {
-                removeComponent(entity.id, componentType)
+                removeComponent(entity[ID_PROPERTY_NAME], componentType)
             })
 
-        const removedEntity = entities[entity.id]
+        const removedEntity = entities[entity[ID_PROPERTY_NAME]]
         
-        delete entities[entity.id]
+        delete entities[entity[ID_PROPERTY_NAME]]
 
         engine.emit('entity-removed', removedEntity)
     }
@@ -175,7 +176,7 @@ export default ({ tickRate = 20 } = {}) => {
      */
     /**
      * Add a component to an entity
-     * @param {number} entity.id to add the component to
+     * @param {number} entity[ID_PROPERTY_NAME] to add the component to
      * @param {string} component.type to add to the entity
      * @param {object} values to instantiate the component with
      */
@@ -192,25 +193,29 @@ export default ({ tickRate = 20 } = {}) => {
         // entity = entityId
         if(typeof entity !== 'object') entity = entities[entity]
 
+        if(entity == undefined)
+            throw new Error(`ModECS Error: Attempted to add a component to a non-existent entity.`)
+
         // if it already has the component, set values (if any) and return
         if(bit.has(entity.bitmask, flag)) {
-            return updateComponent(entity.id, type, values)
+            return updateComponent(entity[ID_PROPERTY_NAME], type, values)
         }
 
         if(typeof component === 'string') component = createComponent(component, values)
         
-        component.id = entity.id
+        component[ID_PROPERTY_NAME] = entity[ID_PROPERTY_NAME]
 
         entity.bitmask = bit.set(entity.bitmask, flag)
 
-        entityId_bitmask[entity.id] = entity.bitmask
+        entityId_bitmask[entity[ID_PROPERTY_NAME]] = entity.bitmask
 
         const store = component_store[type]
 
+        if(store == undefined)
+            throw new Error(`ModECS Error: Component type '${type}' is not registered.`)
+
         store.push(component)
 
-
-        // entity.componentIndices[type] = storeIndex
         entity.componentTypes.push(type)
 
         systems
@@ -224,7 +229,7 @@ export default ({ tickRate = 20 } = {}) => {
                 }
             })
 
-        component_entityId[type][entity.id] = component
+        component_entityId[type][entity[ID_PROPERTY_NAME]] = component
 
         engine.emit('component-added', component, entity)
         
@@ -240,7 +245,7 @@ export default ({ tickRate = 20 } = {}) => {
 
         const entity = entities[entityId]
 
-        const index = component_store[type].findIndex(c => c.id == entityId)
+        const index = component_store[type].findIndex(c => c[ID_PROPERTY_NAME] == entityId)
         const component = component_store[type].splice(index, 1)[0]
         if(!component) {
             throw new Error(`Modecs Error: Component type ${type} does not exist on entity${entityId}`)
@@ -276,7 +281,7 @@ export default ({ tickRate = 20 } = {}) => {
      * @returns {object} a component
      */
     const getComponent = (entityId, type) => {
-        if(typeof entityId === 'object') entityId = entityId.id
+        if(typeof entityId === 'object') entityId = entityId[ID_PROPERTY_NAME]
         return component_entityId[type][entityId]
     }
 
@@ -287,7 +292,7 @@ export default ({ tickRate = 20 } = {}) => {
      * @param {object} values to update on the component
      */
     const updateComponent = (entityId, type, values) => {
-        if(typeof entityId === 'object') entityId = entityId.id
+        if(typeof entityId === 'object') entityId = entityId[ID_PROPERTY_NAME]
         return Object.assign(
             component_entityId[type][entityId], 
             shapeWithValues(component_shape[type], values)
@@ -299,7 +304,7 @@ export default ({ tickRate = 20 } = {}) => {
 
     // once filtered, new entities with this bitmask state can have their components tacked onto the beginning of the local arrays
     const entityBitmaskComponentFilter = (queryMask) => (component) => {
-        const entityMask = entityId_bitmask[component.id]
+        const entityMask = entityId_bitmask[component[ID_PROPERTY_NAME]]
         return bit.check(entityMask, queryMask)
     }
 
@@ -325,7 +330,7 @@ export default ({ tickRate = 20 } = {}) => {
 
         const entityId_localIndex = {}
         
-        const localEntities = cache[componentTypes[0]].map(c => c.id)
+        const localEntities = cache[componentTypes[0]].map(c => c[ID_PROPERTY_NAME])
         
         // const localIndex_entityId = [...localEntities]
 
@@ -334,13 +339,13 @@ export default ({ tickRate = 20 } = {}) => {
             bitmask,
             entities: localEntities,
             add: (entity, swap) => {
-                localEntities.push(entity.id)
+                localEntities.push(entity[ID_PROPERTY_NAME])
                 
                 // cache the index of new entity (entity + components will have the same index within the local cache arrays)
-                // entityId_localIndex[entity.id] = localEntities.length - 1
+                // entityId_localIndex[entity[ID_PROPERTY_NAME]] = localEntities.length - 1
 
                 componentTypes.forEach(type => {
-                    const componentIndex = component_store[type].findIndex(c => c.id == entity.id)
+                    const componentIndex = component_store[type].findIndex(c => c[ID_PROPERTY_NAME] == entity[ID_PROPERTY_NAME])
                     const component = component_store[type][componentIndex]
                     const cacheType = cache[type]
                     if(swap) {
@@ -355,8 +360,8 @@ export default ({ tickRate = 20 } = {}) => {
             },
             remove: entity => {
                 // index to remove should be the same for entity and each component
-                // let i = entityId_localIndex[entity.id]
-                const i = localEntities.findIndex(id => id == entity.id)
+                // let i = entityId_localIndex[entity[ID_PROPERTY_NAME]]
+                const i = localEntities.findIndex(id => id == entity[ID_PROPERTY_NAME])
 
                 if(i == undefined) return
                 
@@ -366,7 +371,7 @@ export default ({ tickRate = 20 } = {}) => {
                     shiftDelete(cache[type], i)
                 })
                 
-                // delete entityId_localIndex[entity.id]
+                // delete entityId_localIndex[entity[ID_PROPERTY_NAME]]
 
                 // Object.keys(entityId_localIndex)
                 //     .forEach(entityId => {
@@ -378,7 +383,7 @@ export default ({ tickRate = 20 } = {}) => {
             prioritize: () => {
                 componentTypes.forEach(type => {
                     component_store[type].sort((a,b) => {
-                        const maskA = entityId_bitmask[a.id]
+                        const maskA = entityId_bitmask[a[ID_PROPERTY_NAME]]
                         return bit.check(maskA, bitmask)
                     })
                 })
