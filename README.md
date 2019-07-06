@@ -1,4 +1,4 @@
-# :evergreen_tree: modecs :evergreen_tree:
+# 🌌 ModECS 🌌 
 Fast, data-oriented, runtime-composable [ECS](https://en.wikipedia.org/wiki/Entity_component_system) library written in JavaScript.
 
 ## Introduction
@@ -10,11 +10,9 @@ npm i modecs
 
 ### Example
 
-If you are familiar with the concept of an ECS already, this should look relatively familiar:
-
 ```javascript
-const Modecs = require('modecs')
-const engine = Modecs()
+const ModECS = require('modecs')
+const engine = ModECS()
 
 // register components with a name and shape
 engine.registerComponent('POSITION', { x: 0, y: 0 })
@@ -55,7 +53,7 @@ engine.start()
 
 ## Philosophy
 
-With Modecs it is best to follow the [Unix Philosophy](https://en.wikipedia.org/wiki/Unix_philosophy). In general, this means that you should strive to make your systems and components as simple as possible. If this means breaking one large feature into multiple smaller systems that pass information through components, generally that will be more maintainable, composable, and reusable than larger monolithic systems will be. That said, each system incurs one loop through all of its own entities, so if performance is an important aspect of the system it may be better to design it monolithically. Use your best discretion here.
+With ModECS it is best to follow the [Unix Philosophy](https://en.wikipedia.org/wiki/Unix_philosophy). In general, this means that you should strive to make your systems and components as simple as possible. If this means breaking one large feature into multiple smaller systems that pass information through components, generally that will be more maintainable, composable, and reusable than larger monolithic systems will be. That said, each system incurs one loop through all of its own entities, so if performance is an important aspect of the system it may be better to design it monolithically. Use your best discretion here.
 
 ### Runtime Composability
 
@@ -63,9 +61,9 @@ Not only can you register and add new components to entities during runtime, but
 
 ### Events
 
-The Modecs engine inherits [`eventemitter3`](https://github.com/primus/eventemitter3). The prime goal of this is to keep communication decoupled throughout all of the game's individual features, supplementing the fact that systems can be added and removed during runtime.
+The ModECS engine inherits [`eventemitter3`](https://github.com/primus/eventemitter3). The prime goal of this is to keep communication decoupled throughout all of the game's individual features, supplementing the fact that systems can be added and removed during runtime.
 
-This creates a powerful paradigm in which you can create entirely "pluggable" features that can interact with systems both registered and yet to be registered. 
+This creates a powerful paradigm in which you can create entirely "pluggable" features that can interact with systems both registered and yet to be registered.
 
 ### Guidelines
 
@@ -73,8 +71,7 @@ This creates a powerful paradigm in which you can create entirely "pluggable" fe
   - Do not listen to events inside of system update loops. 
 - Information can and should exit a system via both components and events. 
   - For advice on when to do so, see `Generic Logic vs Gamemode-Specific Logic`.
-
-Components should be as small and flat as possible to ensure maximum performance.
+- Components should be as small and flat as possible to ensure maximum performance.
 
 ## Modes
 
@@ -82,7 +79,7 @@ Modes are self-contained packages of code that register new systems and componen
 
 E.g.
 
-`/JitterMode.js`
+`JitterMode.js`
 ```javascript
 export default engine => {
 
@@ -109,7 +106,7 @@ export default engine => {
 }
 ```
 
-`/main.js`
+`main.js`
 ```javascript
 engine.use(require('./JitterMode'))
 
@@ -134,12 +131,11 @@ engine.on('jitterbug-happened', (position, xJitter) => {
   // start the jitterbugging behavior, whatever that may be
   engine.addComponent(entityId, 'JITTERBUG', {amount: xJitter})
 })
-
 ```
 
 ## Reusability
 
-If you have developed a few games in the past, you may be familiar with the feeling of redundancy when re-implementing similar features over and over again in different games. Modecs, and ECS in general, attempts to provide a method to the madness that this creates.
+If you have developed a few games in the past, you may be familiar with the feeling of redundancy when re-implementing similar features over and over again in different games. ModECS, and ECS in general, attempts to provide a method to the madness that this creates.
 
 ### Generic Logic vs Gamemode-Specific Logic
 
@@ -157,10 +153,10 @@ As time goes on, you may notice that things are more reusable and easier to debu
 
 ### Declarative vs Imperative Logic
 
-There are two levels of logic at-play in the Modecs framework.
+There are two levels of logic at-play in the ModECS framework.
 
 System update loops and event listeners contain imperative code. Imperative logic describes the behavior and exactly how it should happen.
 
 However, when emitting events from within system update loops, and when defining the event listeners that react to those events, declarative logic is in use. Declarative logic describes reactions, when and what should happen. We do not care how things are done at this level of logic.
 
-Utilizing both of these paradigms of logic in-tandem with one another is the bread and butter of Modecs.
+Utilizing both of these paradigms of logic in-tandem with one another is the bread and butter of ModECS.
