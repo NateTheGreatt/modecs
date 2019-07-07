@@ -46,16 +46,12 @@ export default ({ tickRate = 20, idName = 'id' } = {}) => {
 
     // ENTITIES //
 
-    /**
-     * Creates a new entity
-     * @param  {...string} componentTypes to add to the entity
-     * @returns {object} a new entity
-     */
     const createEntity = (...componentTypes) => {
-        const entity = { componentTypes, componentIndices: {...componentTypes}, bitmask: 0 }
+        const entity = { componentTypes, bitmask: 0 }
         engine.emit('entity-created', entity)
         return entity
     }
+    
     
     /**
      * Add an entity to the engine
@@ -413,12 +409,12 @@ export default ({ tickRate = 20, idName = 'id' } = {}) => {
         
         let update
 
-             if(arity==1) update = i => updateFn(parameters[0][i])
-        else if(arity==2) update = i => updateFn(parameters[0][i], parameters[1][i])
-        else if(arity==3) update = i => updateFn(parameters[0][i], parameters[1][i], parameters[2][i])
-        else if(arity==4) update = i => updateFn(parameters[0][i], parameters[1][i], parameters[2][i], parameters[3][i])
-        else if(arity==5) update = i => updateFn(parameters[0][i], parameters[1][i], parameters[2][i], parameters[3][i], parameters[4][i])
-        else if(arity==6) update = i => updateFn(parameters[0][i], parameters[1][i], parameters[2][i], parameters[3][i], parameters[4][i], parameters[5][i])
+             if(arity==1) update = (i, id)=> updateFn(parameters[0][i], id)
+        else if(arity==2) update = (i, id)=> updateFn(parameters[0][i], parameters[1][i], id)
+        else if(arity==3) update = (i, id)=> updateFn(parameters[0][i], parameters[1][i], parameters[2][i], id)
+        else if(arity==4) update = (i, id)=> updateFn(parameters[0][i], parameters[1][i], parameters[2][i], parameters[3][i], id)
+        else if(arity==5) update = (i, id)=> updateFn(parameters[0][i], parameters[1][i], parameters[2][i], parameters[3][i], parameters[4][i], id)
+        else if(arity==6) update = (i, id)=> updateFn(parameters[0][i], parameters[1][i], parameters[2][i], parameters[3][i], parameters[4][i], parameters[5][i], id)
 
         let frequencyCounter = frequency
         const system = {
@@ -437,12 +433,15 @@ export default ({ tickRate = 20, idName = 'id' } = {}) => {
                 // frequencyCounter -= engine.time.delta
                 // process system logic
                 for(let i = 0; i < view.entities.length; i++) {
-                    update(i)
+                    update(i, view.entities[i][ID_PROPERTY_NAME])
                 }
             }
         }
 
-        systems.push(system)
+        const existingIndex = systems.findIndex(s => s.name == name)
+        if(existingIndex !== -1) systems[existingIndex] = system
+        else systems.push(system)
+        
         systems[name.toLowerCase()] = system
 
         engine.emit('system-registered', system)
