@@ -1,6 +1,19 @@
 # 🌌 ModECS 🌌 
 Small, fast, data-oriented, runtime-composable [ECS](https://en.wikipedia.org/wiki/Entity_component_system) library written in JavaScript.
 
+Features
+
+  - 5 KB minified
+  - Performance focused
+  - Runtime composable
+  - Promotes reusability
+
+Planned
+
+  - [ ] Throttleable system update rates
+  - [ ] Topological ordering of system loops based on component type dependencies
+  - [ ] Serializable state & external store adapters
+  - [ ] Rust port with Node bindings to the same API
 
 ## Install
 ```
