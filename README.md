@@ -3,7 +3,7 @@ Small, fast, data-oriented, runtime-composable [ECS](https://en.wikipedia.org/wi
 
 Features
 
-  - 5 KB minified
+  - 10 KB minified, 5 KB compressed
   - Performance focused
   - Runtime composable
   - Promotes reusability
