@@ -15,7 +15,7 @@ const {
  * @param {object} options to pass into the engine
  * @returns {object} a new engine
  */
-export default ({ tickRate = 20, idName = 'id' } = {}) => {
+module.exports = ({ tickRate = 20, idName = 'id' } = {}) => {
 
     const engine = new EventEmitter()
 
@@ -61,7 +61,7 @@ export default ({ tickRate = 20, idName = 'id' } = {}) => {
         if(entity === undefined)
             throw new Error('Modecs Error: Entity is undefined')
 
-        if(!entity.hasOwnProperty('id')) entity[ID_PROPERTY_NAME] = Object.keys(entities).length
+        if(!entity.hasOwnProperty(ID_PROPERTY_NAME)) entity[ID_PROPERTY_NAME] = Object.keys(entities).length
 
         entities[entity[ID_PROPERTY_NAME]] = entity
 
@@ -153,6 +153,9 @@ export default ({ tickRate = 20, idName = 'id' } = {}) => {
      */
     const createComponent = (type, values={}) => {
         const shape = component_shape[type]
+
+        if(shape == undefined)
+            throw new Error(`Modecs Error: Tried to create an unregistered component type '${type}'`)
         
         const component = shapeWithValues(shape, values)
         
@@ -324,12 +327,8 @@ export default ({ tickRate = 20, idName = 'id' } = {}) => {
         const bitmask = createBitmask(...componentTypes)
         const cache = query(...componentTypes)
 
-        const entityId_localIndex = {}
-        
         const localEntities = cache[componentTypes[0]].map(c => c[ID_PROPERTY_NAME])
         
-        // const localIndex_entityId = [...localEntities]
-
         return {
             cache,
             bitmask,
@@ -337,9 +336,6 @@ export default ({ tickRate = 20, idName = 'id' } = {}) => {
             add: (entity, swap) => {
                 localEntities.push(entity[ID_PROPERTY_NAME])
                 
-                // cache the index of new entity (entity + components will have the same index within the local cache arrays)
-                // entityId_localIndex[entity[ID_PROPERTY_NAME]] = localEntities.length - 1
-
                 componentTypes.forEach(type => {
                     const componentIndex = component_store[type].findIndex(c => c[ID_PROPERTY_NAME] == entity[ID_PROPERTY_NAME])
                     const component = component_store[type][componentIndex]
@@ -356,7 +352,6 @@ export default ({ tickRate = 20, idName = 'id' } = {}) => {
             },
             remove: entity => {
                 // index to remove should be the same for entity and each component
-                // let i = entityId_localIndex[entity[ID_PROPERTY_NAME]]
                 const i = localEntities.findIndex(id => id == entity[ID_PROPERTY_NAME])
 
                 if(i == undefined) return
@@ -366,13 +361,6 @@ export default ({ tickRate = 20, idName = 'id' } = {}) => {
                 componentTypes.forEach(type => {
                     shiftDelete(cache[type], i)
                 })
-                
-                // delete entityId_localIndex[entity[ID_PROPERTY_NAME]]
-
-                // Object.keys(entityId_localIndex)
-                //     .forEach(entityId => {
-                //         entityId_localIndex[entityId] -= 1
-                //     })
             },
             // sort global arrays with this bitmask grouped together at the beginning of the array
             // should prioritize views with the most entities (group components at the beginning of their arrays by this bitmask)
@@ -505,7 +493,7 @@ export default ({ tickRate = 20, idName = 'id' } = {}) => {
     // references
     engine.time = time
 
-    engine.init = () => {
+    engine.compile = () => {
         compileNewRegistrations()
     }
     
@@ -513,7 +501,7 @@ export default ({ tickRate = 20, idName = 'id' } = {}) => {
      * Start the engine
      */
     engine.start = fn => {
-        engine.init()
+        engine.compile()
         engine.emit('start')
         loop()
     }

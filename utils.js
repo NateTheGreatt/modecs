@@ -1,8 +1,8 @@
 const DEBUG = false
 
-export const log = (...args) => { if(DEBUG) console.log(...args) }
+const log = (...args) => { if(DEBUG) console.log(...args) }
 
-export const completeAssign = (target, ...sources) => {
+const completeAssign = (target, ...sources) => {
     sources.forEach(source => {
       let descriptors = Object.keys(source).reduce((descriptors, key) => {
         descriptors[key] = Object.getOwnPropertyDescriptor(source, key);
@@ -20,27 +20,27 @@ export const completeAssign = (target, ...sources) => {
     return target;
 }
 
-export const shiftDelete = (array, i) => {
+const shiftDelete = (array, i) => {
     let stop = array.length - 1
     while(i < stop) array[i] = array[++i]
     array.pop()
 }
 
-export const hrtimeMs = () => {
+const hrtimeMs = () => {
     let time = process.hrtime()
     return time[0] * 1000 + time[1] / 1000000
 }
 
-export const isServer = 
+const isServer = 
     typeof process !== 'undefined' &&
     process.versions != null &&
     process.versions.node != null;
     
-export const isClient =
+const isClient =
     typeof window !== 'undefined' && 
     typeof window.document !== 'undefined'
 
-export const weakCache = (fn) => {
+const weakCache = (fn) => {
     const cache = new WeakMap()
     return (arg) => {
 
@@ -54,12 +54,12 @@ export const weakCache = (fn) => {
     }
 }
 
-export const isInt = n => Number(n) === n && n % 1 === 0
-export const isFloat = n => Number(n) === n && n % 1 !== 0
+const isInt = n => Number(n) === n && n % 1 === 0
+const isFloat = n => Number(n) === n && n % 1 !== 0
 
-export const isWithin = (low, n, high) => low < n && n < high
+const isWithin = (low, n, high) => low < n && n < high
 
-export const FastArray = (size) => {
+const FastArray = (size) => {
     const array = new Array(size).fill()
     let length = 0
     return Object.assign(array, {
@@ -83,4 +83,18 @@ export const FastArray = (size) => {
             return -1
         }
     })
+}
+
+module.exports = {
+    log,
+    completeAssign,
+    shiftDelete,
+    hrtimeMs,
+    isServer,
+    isClient,
+    weakCache,
+    isInt,
+    isFloat,
+    isWithin,
+    FastArray
 }
