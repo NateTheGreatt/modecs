@@ -1,11 +1,11 @@
 {
   "name": "modecs",
-  "version": "0.0.3",
-  "description": "Data-oriented, runtime-composable ECS library.",
+  "version": "0.0.4",
+  "description": "Small, fast, data-oriented, runtime-composable ECS library.",
   "main": "index.js",
   "module": "index.js",
   "scripts": {
-    "test": "jest"
+    "test": "jest --collect-coverage"
   },
   "repository": {
     "type": "git",
