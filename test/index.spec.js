@@ -19,7 +19,7 @@ describe('ModECS', () => {
         expect(() => engine.createComponent('POSITION')).not.toThrow()
     })
 
-    it('should create a component with values', () => {        
+    it('should create a component with values', () => {
         engine.compile()
 
         const position = engine.createComponent('POSITION', {x:2,y:2})
