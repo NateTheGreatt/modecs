@@ -3,7 +3,8 @@ Small, fast, data-oriented, runtime-composable [ECS](https://en.wikipedia.org/wi
 
 Features
 
-  - 10 KB minified, 5 KB compressed
+  - < 5 KB gzipped
+  - Classless ES6
   - Performance focused
   - Runtime composable
   - Promotes reusability
@@ -13,7 +14,7 @@ Planned
   - [ ] Throttleable system update rates
   - [ ] Topological ordering of system loops based on component type dependencies
   - [ ] Serializable state & external store adapters
-  - [ ] Rust port with Node bindings to the same API
+  - [ ] [V programming language](https://vlang.io/) port with Node bindings to the same API
 
 ## Install
 ```
@@ -40,8 +41,8 @@ engine.registerSystem(
     const speed = 10
 
     // return the update function to be called every tick
-    // position and target components are injected per-entity that has the required components on it
-    return (position, target) => {
+    // position and target components, as well as the entityId they exist on are injected
+    return (position, target, entityId) => {
       position.x += target.x * speed * engine.time.delta
       position.y += target.y * speed * engine.time.delta
     }

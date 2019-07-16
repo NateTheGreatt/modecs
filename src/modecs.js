@@ -15,14 +15,14 @@ const {
  * @param {object} options to pass into the engine
  * @returns {object} a new engine
  */
-module.exports = ({ tickRate = 20, idName = 'id' } = {}) => {
+module.exports = ({ tickRate = 20 } = {}) => {
 
     const engine = new EventEmitter()
 
     // CONSTANTS //
 
     const TICK_RATE = tickRate
-    const ID_PROPERTY_NAME = idName
+    const ID_SYMBOL = Symbol('id')
 
     // ARRAYS & HASHMAPS // 
     
@@ -59,11 +59,11 @@ module.exports = ({ tickRate = 20, idName = 'id' } = {}) => {
      */
     const addEntity = entity => {
         if(entity === undefined)
-            throw new Error('Modecs Error: Entity is undefined')
+            throw `Entity is undefined`
 
-        if(!entity.hasOwnProperty(ID_PROPERTY_NAME)) entity[ID_PROPERTY_NAME] = Object.keys(entities).length
+        if(!entity.hasOwnProperty(ID_SYMBOL)) entity[ID_SYMBOL] = Object.keys(entities).length
 
-        entities[entity[ID_PROPERTY_NAME]] = entity
+        entities[entity[ID_SYMBOL]] = entity
 
         entity.componentTypes
             .forEach(componentType => {
@@ -79,18 +79,18 @@ module.exports = ({ tickRate = 20, idName = 'id' } = {}) => {
      */
     const removeEntity = entity => {
         if(entity === undefined)
-            throw new Error('Modecs Error: Entity is undefined')
+            throw `Entity is undefined`
 
         engine.emit('entity-removed::before', entity)
 
         entity.componentTypes
             .forEach(componentType => {
-                removeComponent(entity[ID_PROPERTY_NAME], componentType)
+                removeComponent(entity[ID_SYMBOL], componentType)
             })
 
-        const removedEntity = entities[entity[ID_PROPERTY_NAME]]
+        const removedEntity = entities[entity[ID_SYMBOL]]
         
-        delete entities[entity[ID_PROPERTY_NAME]]
+        delete entities[entity[ID_SYMBOL]]
 
         engine.emit('entity-removed', removedEntity)
     }
@@ -197,16 +197,16 @@ module.exports = ({ tickRate = 20, idName = 'id' } = {}) => {
 
         // if it already has the component, set values (if any) and return
         if(bit.has(entity.bitmask, flag)) {
-            return updateComponent(entity[ID_PROPERTY_NAME], type, values)
+            return updateComponent(entity[ID_SYMBOL], type, values)
         }
 
         if(typeof component === 'string') component = createComponent(component, values)
         
-        component[ID_PROPERTY_NAME] = entity[ID_PROPERTY_NAME]
+        component[ID_SYMBOL] = entity[ID_SYMBOL]
 
         entity.bitmask = bit.set(entity.bitmask, flag)
 
-        entityId_bitmask[entity[ID_PROPERTY_NAME]] = entity.bitmask
+        entityId_bitmask[entity[ID_SYMBOL]] = entity.bitmask
 
         const store = component_store[type]
 
@@ -228,7 +228,7 @@ module.exports = ({ tickRate = 20, idName = 'id' } = {}) => {
                 }
             })
 
-        component_entityId[type][entity[ID_PROPERTY_NAME]] = component
+        component_entityId[type][entity[ID_SYMBOL]] = component
 
         engine.emit('component-added', component, entity)
         
@@ -245,7 +245,7 @@ module.exports = ({ tickRate = 20, idName = 'id' } = {}) => {
 
         const entity = entities[entityId]
 
-        const index = component_store[type].findIndex(c => c[ID_PROPERTY_NAME] == entityId)
+        const index = component_store[type].findIndex(c => c[ID_SYMBOL] == entityId)
         const component = component_store[type].splice(index, 1)[0]
         if(!component) {
             throw `Component type ${type} does not exist on entity${entityId}`
@@ -281,7 +281,7 @@ module.exports = ({ tickRate = 20, idName = 'id' } = {}) => {
      * @returns {object} a component
      */
     const getComponent = (entityId, type) => {
-        if(typeof entityId === 'object') entityId = entityId[ID_PROPERTY_NAME]
+        if(typeof entityId === 'object') entityId = entityId[ID_SYMBOL]
         return component_entityId[type][entityId]
     }
 
@@ -292,7 +292,7 @@ module.exports = ({ tickRate = 20, idName = 'id' } = {}) => {
      * @param {object} values to update on the component
      */
     const updateComponent = (entityId, type, values) => {
-        if(typeof entityId === 'object') entityId = entityId[ID_PROPERTY_NAME]
+        if(typeof entityId === 'object') entityId = entityId[ID_SYMBOL]
         return Object.assign(
             component_entityId[type][entityId], 
             shapeWithValues(component_shape[type], values)
@@ -303,7 +303,7 @@ module.exports = ({ tickRate = 20, idName = 'id' } = {}) => {
     // VIEWS //
 
     const entityBitmaskComponentFilter = (queryMask) => (component) => {
-        const entityMask = entityId_bitmask[component[ID_PROPERTY_NAME]]
+        const entityMask = entityId_bitmask[component[ID_SYMBOL]]
         return bit.check(entityMask, queryMask)
     }
 
@@ -327,17 +327,17 @@ module.exports = ({ tickRate = 20, idName = 'id' } = {}) => {
         const bitmask = createBitmask(...componentTypes)
         const cache = query(...componentTypes)
 
-        const localEntities = cache[componentTypes[0]].map(c => c[ID_PROPERTY_NAME])
+        const localEntities = cache[componentTypes[0]].map(c => c[ID_SYMBOL])
         
         return {
             cache,
             bitmask,
             entities: localEntities,
             add: (entity, swap) => {
-                localEntities.push(entity[ID_PROPERTY_NAME])
+                localEntities.push(entity[ID_SYMBOL])
                 
                 componentTypes.forEach(type => {
-                    const componentIndex = component_store[type].findIndex(c => c[ID_PROPERTY_NAME] == entity[ID_PROPERTY_NAME])
+                    const componentIndex = component_store[type].findIndex(c => c[ID_SYMBOL] == entity[ID_SYMBOL])
                     const component = component_store[type][componentIndex]
                     const cacheType = cache[type]
                     if(swap) {
@@ -352,7 +352,7 @@ module.exports = ({ tickRate = 20, idName = 'id' } = {}) => {
             },
             remove: entity => {
                 // index to remove should be the same for entity and each component
-                const i = localEntities.findIndex(id => id == entity[ID_PROPERTY_NAME])
+                const i = localEntities.findIndex(id => id == entity[ID_SYMBOL])
 
                 if(i == undefined) return
                 
@@ -367,7 +367,7 @@ module.exports = ({ tickRate = 20, idName = 'id' } = {}) => {
             prioritize: () => {
                 componentTypes.forEach(type => {
                     component_store[type].sort((a,b) => {
-                        const maskA = entityId_bitmask[a[ID_PROPERTY_NAME]]
+                        const maskA = entityId_bitmask[a[ID_SYMBOL]]
                         return bit.check(maskA, bitmask)
                     })
                 })
@@ -421,7 +421,7 @@ module.exports = ({ tickRate = 20, idName = 'id' } = {}) => {
                 // frequencyCounter -= engine.time.delta
                 // process system logic
                 for(let i = 0; i < view.entities.length; i++) {
-                    update(i, view.entities[i][ID_PROPERTY_NAME])
+                    update(i, view.entities[i][ID_SYMBOL])
                 }
             }
         }
@@ -476,8 +476,6 @@ module.exports = ({ tickRate = 20, idName = 'id' } = {}) => {
     }
 
     Object.assign(engine, {
-        get components() { return Object.keys(component_shape) },
-        ID_PROPERTY_NAME,
         createView,
         registerSystem,
         registerComponent,

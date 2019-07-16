@@ -17,7 +17,7 @@ This creates a powerful paradigm in which you can create entirely "pluggable" fe
 ## Guidelines
 
 - Information should only enter a system via components.
-  - Do not listen to events inside of system update loops. 
+  - Do not listen to events inside of system update loops.
 - Information can and should exit a system via both components and events. 
   - For advice on when to do so, see `Generic Logic vs Gamemode-Specific Logic`.
 - Components should remain small, flat, and **should never change shape** to ensure performance and maintainability. 
@@ -39,12 +39,12 @@ export default engine => {
     ['POSITION', 'JITTER'],
     () => {
       const randomRange = (min, max) => Math.random() * (max - min) + min
-      return (position, jitter) => {
+      return (position, jitter, entityId) => {
         let xJitter = randomRange(-jitter.amount, jitter.amount)
         let yJitter = randomRange(-jitter.amount, jitter.amount)
 
         // jittered a little too much, emit an event
-        if(xJitter >= jitter.amount/2) engine.emit('jitterbug-happened', position, xJitter)
+        if(xJitter >= jitter.amount/2) engine.emit('jitterbug-happened', entityId, xJitter)
 
         position.x += xJitter
         position.y += yJitter
@@ -71,8 +71,7 @@ engine.registerSystem(
 )
 
 // this is where game logic is best kept
-engine.on('jitterbug-happened', (position, xJitter) => {
-  const entityId = position.id
+engine.on('jitterbug-happened', (entityId, xJitter) => {
 
   // stop the jittering behavior
   engine.removeComponent(entityId, 'JITTER')

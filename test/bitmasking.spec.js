@@ -1,4 +1,4 @@
-const bit = require('../bitmasking')
+const bit = require('../src/bitmasking')
 
 it('should return true', () => {
     x = 0b0101
