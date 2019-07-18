@@ -78,7 +78,7 @@ module.exports = ({ tickRate = 20, idName = 'id' } = {}) => {
      * @param {object} entity to remove from the engine
      */
     const removeEntityDeferrals = []
-    const removeEntity = removeEntityDeferrals.push(entity => {
+    const removeEntity = entity => removeEntityDeferrals.push(() => {
         if(entity === undefined)
             throw `Entity is undefined`
 
