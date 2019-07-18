@@ -61,7 +61,7 @@ module.exports = ({ tickRate = 20, idName = 'id' } = {}) => {
         if(entity === undefined)
             throw `Entity is undefined`
 
-        if(!entity.hasOwnProperty(ID_PROPERTY_NAME)) entity[ID_PROPERTY_NAME] = Object.keys(entities).length
+        if(!entity.hasOwnProperty(ID_PROPERTY_NAME)) entity[ID_PROPERTY_NAME] = entities.length
 
         entities[entity[ID_PROPERTY_NAME]] = entity
 
@@ -77,7 +77,8 @@ module.exports = ({ tickRate = 20, idName = 'id' } = {}) => {
      * Remove an entity from the engine
      * @param {object} entity to remove from the engine
      */
-    const removeEntity = entity => {
+    const removeEntityDeferrals = []
+    const removeEntity = removeEntityDeferrals.push(entity => {
         if(entity === undefined)
             throw `Entity is undefined`
 
@@ -93,7 +94,7 @@ module.exports = ({ tickRate = 20, idName = 'id' } = {}) => {
         delete entities[entity[ID_PROPERTY_NAME]]
 
         engine.emit('entity-removed', removedEntity)
-    }
+    })
     
     /**
      * Get an existing entity from the engine
@@ -438,16 +439,26 @@ module.exports = ({ tickRate = 20, idName = 'id' } = {}) => {
     })
 
     const processDeferrals = () => {
+        // registration deferrals
         while(registerComponentDeferrals.length > 0)
             registerComponentDeferrals.shift()()
         while(registerSystemDeferrals.length > 0)
             registerSystemDeferrals.shift()()
+
+        // removal deferrals
+        while(removeEntityDeferrals.length > 0)
+            removeEntityDeferrals.shift()()
         while(removeComponentDeferrals.length > 0)
             removeComponentDeferrals.shift()()
     }
 
 
     // GAME LOOP //
+
+    engine.process = () => {
+        for(let i = 0; i < systems.length; i++)
+            systems[i].process()
+    }
 
     const time = {
         tick: 0,
@@ -464,8 +475,7 @@ module.exports = ({ tickRate = 20, idName = 'id' } = {}) => {
         time.now = isClient ? performance.now() : hrtimeMs()
         time.delta = (time.now - previous) / 1000
         
-        for(let i = 0; i < systems.length; i++)
-            systems[i].process()
+        engine.process()
 
         engine.emit('update', time.delta, time.tick)
 
