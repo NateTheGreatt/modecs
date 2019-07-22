@@ -86,7 +86,7 @@ module.exports = ({ tickRate = 20, idName = 'id' } = {}) => {
 
         entity.componentTypes
             .forEach(componentType => {
-                removeComponent(entity[ID_PROPERTY_NAME], componentType)
+                removeComponent(entity[ID_PROPERTY_NAME], componentType, true)
             })
 
         const removedEntity = entities[entity[ID_PROPERTY_NAME]]
@@ -242,38 +242,42 @@ module.exports = ({ tickRate = 20, idName = 'id' } = {}) => {
      * @param {string} type of component to remove from the entity
      */
     const removeComponentDeferrals = []
-    const removeComponent = (entityId, type) => removeComponentDeferrals.push(() => {
+    const removeComponent = (entityId, type, now=true) => {
+        removeComponentDeferrals.push(() => {
 
-        const entity = entities[entityId]
+            const entity = entities[entityId]
 
-        const index = component_store[type].findIndex(c => c[ID_PROPERTY_NAME] == entityId)
-        const component = component_store[type].splice(index, 1)[0]
-        if(!component) {
-            throw `Component type ${type} does not exist on entity${entityId}`
-        }
+            const index = component_store[type].findIndex(c => c[ID_PROPERTY_NAME] == entityId)
+            const component = component_store[type].splice(index, 1)[0]
+            if(!component) {
+                throw `Component type ${type} does not exist on entity${entityId}`
+            }
 
-        const flag = component_bitflag[type]
+            const flag = component_bitflag[type]
 
-        // remove entity's component references from each relevant system
-        systems
-            // only relevant systems
-            .filter(system => bit.has(system.bitmask, flag))
-            .forEach(system => {
-                // if entity matches with system
-                if(bit.check(entity.bitmask, system.bitmask)) {
-                    // remove entity from system
-                    system.remove(entity)
-                }
-            })
-        
-        delete component_entityId[type][entityId]
+            // remove entity's component references from each relevant system
+            systems
+                // only relevant systems
+                .filter(system => bit.has(system.bitmask, flag))
+                .forEach(system => {
+                    // if entity matches with system
+                    if(bit.check(entity.bitmask, system.bitmask)) {
+                        // remove entity from system
+                        system.remove(entity)
+                    }
+                })
+            
+            delete component_entityId[type][entityId]
 
-        // clear the bitflag and index on the entity
-        entity.bitmask = bit.clear(entity.bitmask, flag)
-        entity.componentTypes = entity.componentTypes.filter(t => t !== type)
+            // clear the bitflag and index on the entity
+            entity.bitmask = bit.clear(entity.bitmask, flag)
+            entity.componentTypes = entity.componentTypes.filter(t => t !== type)
 
-        engine.emit('component-removed', component, entity)
-    })
+            engine.emit('component-removed', component, entity)
+        })
+
+        if(now) removeComponentDeferrals.shift()()
+    }
     
     /**
      * 
