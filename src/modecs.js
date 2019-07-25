@@ -144,7 +144,9 @@ module.exports = ({ tickRate = 20, idName = 'id' } = {}) => {
     })
 
     const shapeWithValues = (shape, values={}) => Object.keys(shape)
-            .reduce((acc,key) => Object.assign(acc, { [key]: values[key] || shape[key] }), {})
+            .reduce((acc,key) => Object.assign(acc, { 
+                [key]: values[key] || values[key] === 0 ? values[key] : shape[key] }), {})
+            }), {})
 
     /**
      * Create a new component
