@@ -49,17 +49,15 @@ engine.registerSystem(
   }
 )
 
-// create entities by passing in component types
-const entity1 = engine.createEntity('POSITION', 'TARGET')
+// createEntity returns a new ID
+const entityID1 = engine.createEntity()
+engine.addEntity(entityID1)
 
-const entity2 = engine.createEntity()
-// or add components manually
-engine.addComponent(entity2, 'POSITION', { x: 50 })
-// first argument can be an entity or its ID
-engine.addComponent(entity2.id, 'TARGET', { x: 1, y: 1 }) // entity2 will move southeast
-
-engine.addEntity(entity1)
-engine.addEntity(entity2)
+const entityID2 = engine.createEntity()
+// add components to an ID with a name and shape
+engine.addComponent(entityID2, 'POSITION', { x: 50 })
+engine.addComponent(entityID2, 'TARGET', { x: 1, y: 1 }) // entity2 will move southeast
+engine.addEntity(entityID2)
 
 engine.start()
 ```
