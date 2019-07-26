@@ -29,24 +29,19 @@ describe('ModECS', () => {
     })
 
     it('should create an entity', () => {
-        const entity = engine.createEntity()
-        expect(entity.componentTypes).toHaveLength(0)
-    })
-
-    it('should create an entity specified with components', () => {
-        const entity = engine.createEntity('POSITION')
-        expect(entity.componentTypes[0]).toEqual('POSITION')
+        const id = engine.createEntity('POSITION')
+        expect(id).toBe(0)
     })
 
     it('should not add registered component to an entity before compilation', () => {
-        const entity = engine.createEntity()
-        expect(() => engine.addComponent(entity, 'POSITION')).toThrow()
+        const id = engine.createEntity()
+        expect(() => engine.addComponent(id, 'POSITION')).toThrow()
     })
 
     it('should add registered component to an entity after compilation', () => {
         engine.compile()
 
-        const entity = engine.createEntity()
-        expect(() => engine.addComponent(entity, 'POSITION')).not.toThrow()
+        const id = engine.createEntity()
+        expect(() => engine.addComponent(id, 'POSITION')).not.toThrow()
     })
 })

@@ -4,25 +4,22 @@ const {
     shiftDelete,
     hrtimeMs,
     isServer,
-    isClient,
-    completeAssign
+    isClient
 } = require('./utils')
-
-
 
 /**
  * Creates an new instance of the Modecs engine (no need to invoke with 'new')
  * @param {object} options to pass into the engine
  * @returns {object} a new engine
  */
-module.exports = ({ tickRate = 20, idName = 'id' } = {}) => {
+module.exports = ({ tickRate = 20, idName = '__parentID' } = {}) => {
 
     const engine = new EventEmitter()
 
     // CONSTANTS //
 
     const TICK_RATE = tickRate
-    const ID_PROPERTY_NAME = idName
+    const ID_PROPERTY = idName
 
     // ARRAYS & HASHMAPS // 
     
@@ -37,40 +34,37 @@ module.exports = ({ tickRate = 20, idName = 'id' } = {}) => {
     
     const component_store = {} // arrays of component instances per type
     const component_shape = {} // shapes per type
-    const component_bitflag = {} // bitflags per type
+    const component_bitflag = {} // component name to bitflag
+    const bitflags = [] // array of bitflags
     const component_entityId = {}
 
-    // store references to each system in the array
+    const views = []
     const systems = []
-    
+
+    // UTILS //
+
+    const createBitmask = (...componentTypes) => componentTypes.reduce((mask, type) => mask | component_bitflag[type], 0)
+
+    const typesFromMask = bitmask => Object.keys(component_bitflag).filter(type => bit.has(bitmask, component_bitflag[type]))
 
     // ENTITIES //
-
+    let id = 0
     const createEntity = (...componentTypes) => {
-        const entity = { componentTypes, bitmask: 0 }
-        engine.emit('entity-created', entity)
-        return entity
+        engine.emit('entity-created', id)
+        return id++
     }
-    
     
     /**
      * Add an entity to the engine
-     * @param {object} entity to add to the engine
+     * @param {object} id to add to the engine
      */
-    const addEntity = entity => {
-        if(entity === undefined)
-            throw `Entity is undefined`
+    const addEntity = id => {
+        if(id === undefined)
+            throw `Entity ID is undefined`
 
-        if(!entity.hasOwnProperty(ID_PROPERTY_NAME)) entity[ID_PROPERTY_NAME] = entities.length
+        entities[id] = id
 
-        entities[entity[ID_PROPERTY_NAME]] = entity
-
-        entity.componentTypes
-            .forEach(componentType => {
-                addComponent(entity, componentType)
-            })
-
-        engine.emit('entity-added', entity)
+        engine.emit('entity-added', id)
     }
 
     /**
@@ -78,32 +72,28 @@ module.exports = ({ tickRate = 20, idName = 'id' } = {}) => {
      * @param {object} entity to remove from the engine
      */
     const removeEntityDeferrals = []
-    const removeEntity = entity => removeEntityDeferrals.push(() => {
-        if(entity === undefined)
-            throw `Entity is undefined`
+    const removeEntity = (id, now=false) => {
+        removeEntityDeferrals.push(() => {
+            if(id === undefined)
+                throw `Entity ID is undefined`
 
-        engine.emit('entity-removed::before', entity)
+            engine.emit('entity-removed::before', id)
+            
+            typesFromMask(entityId_bitmask[id])
+                .forEach(type => {
+                    removeComponent(id, type, now)
+                })
 
-        entity.componentTypes
-            .forEach(componentType => {
-                removeComponent(entity[ID_PROPERTY_NAME], componentType, true)
-            })
+            const removedEntity = entities[id]
+            
+            delete entities[id]
 
-        const removedEntity = entities[entity[ID_PROPERTY_NAME]]
-        
-        delete entities[entity[ID_PROPERTY_NAME]]
+            engine.emit('entity-removed', removedEntity)
+        })
 
-        engine.emit('entity-removed', removedEntity)
-    })
-    
-    /**
-     * Get an existing entity from the engine
-     * @param {number} id of the entity to get
-     */
-    const getEntity = id => {
-        return entities[id]
+        if(now) removeEntityDeferrals.shift()()
     }
-
+    
     // COMPONENTS //
     
     let bitflag = 1
@@ -123,7 +113,8 @@ module.exports = ({ tickRate = 20, idName = 'id' } = {}) => {
             // update each existing component with the new shape
             component_store[type].forEach(component => {
                 const cKeys = Object.keys(component)
-                const newKeys = shapeKeys.reduce((a,k) => !cKeys.includes(k), [])
+                // only apply new properties to the existing component (composite)
+                const newKeys = shapeKeys.filter(key => !cKeys.includes(key))
                 newKeys.forEach(key => { component[key] = shape[key] })
             })
 
@@ -137,15 +128,20 @@ module.exports = ({ tickRate = 20, idName = 'id' } = {}) => {
             component_entityId[type] = []
 
             component_bitflag[type] = bitflag
-            bitflag = 1 << componentCount // shift the bitflag by an offset of N components
+            bitflags.push(bitflag)
+
+            bitflag = 1 << componentCount // shift the bitflag by an offset of N components for next call
         }
 
         engine.emit('component-registered', type, shape, bitflag)
     })
 
     const shapeWithValues = (shape, values={}) => Object.keys(shape)
-            .reduce((acc,key) => Object.assign(acc, { [key]: values[key] || shape[key] }), {})
-
+        .reduce((acc,key) => {
+            acc[key] = values.hasOwnProperty(key) ? values[key] : shape[key] 
+            return acc
+        }, {})
+        
     /**
      * Create a new component
      * @param {string} type of component to create
@@ -170,68 +166,45 @@ module.exports = ({ tickRate = 20, idName = 'id' } = {}) => {
 
     /**
      * Add a component to an entity
-     * @param {object} entity to add the component to
+     * @param {object} id to add the component to
      * @param {object} component to add to the entity
      * @param {object} values to instantiate the component with
      */
-    /**
-     * Add a component to an entity
-     * @param {number} entity[ID_PROPERTY_NAME] to add the component to
-     * @param {string} component.type to add to the entity
-     * @param {object} values to instantiate the component with
-     */
-    const addComponent = (entity, component, values={}) => {
-        let type
-        if(typeof component === 'string') type = component
-        if(typeof component === 'object') type = component.type
-
+    const addComponent = (id, type, values={}) => {
+        if(id == undefined)
+            throw `Attempted to add a component to a non-existent entity.`
         if(!component_bitflag.hasOwnProperty(type)) 
             throw `Tried to add an unregistered component type '${type}'`
 
         const flag = component_bitflag[type]
-        
-        // entity = entityId
-        if(typeof entity !== 'object') entity = entities[entity]
-
-        if(entity == undefined)
-            throw `Attempted to add a component to a non-existent entity.`
 
         // if it already has the component, set values (if any) and return
-        if(bit.has(entity.bitmask, flag)) {
-            return updateComponent(entity[ID_PROPERTY_NAME], type, values)
+        if(bit.has(entityId_bitmask[id], flag)) {
+            return updateComponent(id, type, values)
         }
 
-        if(typeof component === 'string') component = createComponent(component, values)
+        const component = createComponent(type, values)
         
-        component[ID_PROPERTY_NAME] = entity[ID_PROPERTY_NAME]
+        component[ID_PROPERTY] = id
 
-        entity.bitmask = bit.set(entity.bitmask, flag)
+        entityId_bitmask[id] = bit.set(entityId_bitmask[id], flag)
 
-        entityId_bitmask[entity[ID_PROPERTY_NAME]] = entity.bitmask
-
-        const store = component_store[type]
-
-        if(store == undefined)
+        if(component_store[type] == undefined)
             throw `Component type '${type}' is not registered.`
 
-        store.push(component)
+        component_store[type].push(component)
 
-        entity.componentTypes.push(type)
+        views.forEach(view => {
+            // if entity matches with view
+            if(bit.check(entityId_bitmask[id], view.bitmask)) {
+                // add entity to view and let view get components
+                view.add(id)
+            }
+        })
 
-        systems
-            // only relevant systems
-            .filter(system => bit.has(system.bitmask, flag))
-            .forEach(system => {
-                // if entity matches with system
-                if(bit.check(entity.bitmask, system.bitmask)) {
-                    // add entity to system and let system get components
-                    system.add(entity)
-                }
-            })
+        component_entityId[type][id] = component
 
-        component_entityId[type][entity[ID_PROPERTY_NAME]] = component
-
-        engine.emit('component-added', component, entity)
+        engine.emit('component-added', component, id)
         
         return component
     }
@@ -242,38 +215,32 @@ module.exports = ({ tickRate = 20, idName = 'id' } = {}) => {
      * @param {string} type of component to remove from the entity
      */
     const removeComponentDeferrals = []
-    const removeComponent = (entityId, type, now=true) => {
+    const removeComponent = (id, type, now=false) => {
         removeComponentDeferrals.push(() => {
 
-            const entity = entities[entityId]
-
-            const index = component_store[type].findIndex(c => c[ID_PROPERTY_NAME] == entityId)
+            const index = component_store[type].findIndex(c => c[ID_PROPERTY] == id)
             const component = component_store[type].splice(index, 1)[0]
             if(!component) {
-                throw `Component type ${type} does not exist on entity${entityId}`
+                throw `Component type ${type} does not exist on entity${id}`
             }
 
             const flag = component_bitflag[type]
 
             // remove entity's component references from each relevant system
-            systems
-                // only relevant systems
-                .filter(system => bit.has(system.bitmask, flag))
-                .forEach(system => {
-                    // if entity matches with system
-                    if(bit.check(entity.bitmask, system.bitmask)) {
-                        // remove entity from system
-                        system.remove(entity)
-                    }
-                })
+            views.forEach(view => {
+                // if entity matches with view
+                if(bit.check(entityId_bitmask[id], view.bitmask)) {
+                    // remove entity from view
+                    view.remove(id)
+                }
+            })
             
-            delete component_entityId[type][entityId]
+            delete component_entityId[type][id]
 
             // clear the bitflag and index on the entity
-            entity.bitmask = bit.clear(entity.bitmask, flag)
-            entity.componentTypes = entity.componentTypes.filter(t => t !== type)
+            entityId_bitmask[id] = bit.clear(entityId_bitmask[id], flag)
 
-            engine.emit('component-removed', component, entity)
+            engine.emit('component-removed', component, id)
         })
 
         if(now) removeComponentDeferrals.shift()()
@@ -281,25 +248,23 @@ module.exports = ({ tickRate = 20, idName = 'id' } = {}) => {
     
     /**
      * 
-     * @param {number} entityId to get the component from
+     * @param {number} id to get the component from
      * @param {string} type of component to get
      * @returns {object} a component
      */
-    const getComponent = (entityId, type) => {
-        if(typeof entityId === 'object') entityId = entityId[ID_PROPERTY_NAME]
-        return component_entityId[type][entityId]
+    const getComponent = (id, type) => {
+        return component_entityId[type][id]
     }
 
     /**
      * 
-     * @param {number} entityId to update
+     * @param {number} id to update
      * @param {string} type of component to update
      * @param {object} values to update on the component
      */
-    const updateComponent = (entityId, type, values) => {
-        if(typeof entityId === 'object') entityId = entityId[ID_PROPERTY_NAME]
+    const updateComponent = (id, type, values) => {
         return Object.assign(
-            component_entityId[type][entityId], 
+            component_entityId[type][id], 
             shapeWithValues(component_shape[type], values)
         )
     }
@@ -308,11 +273,10 @@ module.exports = ({ tickRate = 20, idName = 'id' } = {}) => {
     // VIEWS //
 
     const entityBitmaskComponentFilter = (queryMask) => (component) => {
-        const entityMask = entityId_bitmask[component[ID_PROPERTY_NAME]]
+        const entityMask = entityId_bitmask[component[ID_PROPERTY]]
         return bit.check(entityMask, queryMask)
     }
 
-    const createBitmask = (...componentTypes) => componentTypes.reduce((mask, type) => mask | component_bitflag[type], 0)
 
     const query = (...componentTypes) => {
         const queryMask = createBitmask(...componentTypes)
@@ -332,32 +296,22 @@ module.exports = ({ tickRate = 20, idName = 'id' } = {}) => {
         const bitmask = createBitmask(...componentTypes)
         const cache = query(...componentTypes)
 
-        const localEntities = cache[componentTypes[0]].map(c => c[ID_PROPERTY_NAME])
+        const localEntities = cache[componentTypes[0]].map(c => c[ID_PROPERTY])
         
-        return {
+        const view = {
             cache,
             bitmask,
             entities: localEntities,
-            add: (entity, swap) => {
-                localEntities.push(entity[ID_PROPERTY_NAME])
+            add: (id, swap=false) => {
+                localEntities.push(id)
                 
                 componentTypes.forEach(type => {
-                    const componentIndex = component_store[type].findIndex(c => c[ID_PROPERTY_NAME] == entity[ID_PROPERTY_NAME])
-                    const component = component_store[type][componentIndex]
-                    const cacheType = cache[type]
-                    if(swap) {
-                        const copiedComponent = Object.assign({}, component_store[type][componentIndex])
-                        cacheType.push(copiedComponent)
-                         // TODO: bugged - need to prevent other systems from losing the reference
-                        component_store[type][componentIndex] = copiedComponent
-                    } else {
-                        cacheType.push(component)
-                    }
+                    cache[type].push(component_store[type].find(c => c[ID_PROPERTY] == id))
                 })
             },
-            remove: entity => {
+            remove: id => {
                 // index to remove should be the same for entity and each component
-                const i = localEntities.findIndex(id => id == entity[ID_PROPERTY_NAME])
+                const i = localEntities.findIndex(id2 => id == id2)
 
                 if(i == undefined) return
                 
@@ -372,26 +326,30 @@ module.exports = ({ tickRate = 20, idName = 'id' } = {}) => {
             prioritize: () => {
                 componentTypes.forEach(type => {
                     component_store[type].sort((a,b) => {
-                        const maskA = entityId_bitmask[a[ID_PROPERTY_NAME]]
+                        const maskA = entityId_bitmask[a]
                         return bit.check(maskA, bitmask)
                     })
                 })
             }
         }
+
+        views.push(view)
+
+        return view
     }
 
 
     // SYSTEMS //
 
-    const registerSystemDeferrals = []
     /**
      * 
      * @param {string} name of the system
      * @param {string[]} componentTypes that the system requires an entity to have
      * @param {function} setup function to call when the engine starts
      * @param {number} frequency of the system in millihertz (invoked every N milliseconds)
-     * @param {boolean} [swap=true] swap components into a local memory space (tends to increase performance)
+     * @param {boolean} [swap=true] BUGGED swap components into a local memory space (tends to increase performance)
      */
+    const registerSystemDeferrals = []
     const registerSystem = (name, componentTypes, setup, frequency, swap=false) => registerSystemDeferrals.push(() => {
         const updateFn = setup()
         const arity = componentTypes.length
@@ -426,7 +384,7 @@ module.exports = ({ tickRate = 20, idName = 'id' } = {}) => {
                 // frequencyCounter -= engine.time.delta
                 // process system logic
                 for(let i = 0; i < view.entities.length; i++) {
-                    update(i, view.entities[i][ID_PROPERTY_NAME])
+                    update(i, view.entities[i])
                 }
             }
         }
@@ -442,14 +400,14 @@ module.exports = ({ tickRate = 20, idName = 'id' } = {}) => {
         return system
     })
 
-    const processDeferrals = () => {
-        // registration deferrals
+    const registrationDeferrals = () => {
         while(registerComponentDeferrals.length > 0)
             registerComponentDeferrals.shift()()
         while(registerSystemDeferrals.length > 0)
             registerSystemDeferrals.shift()()
+    }
 
-        // removal deferrals
+    const removalDeferrals = () => {
         while(removeEntityDeferrals.length > 0)
             removeEntityDeferrals.shift()()
         while(removeComponentDeferrals.length > 0)
@@ -460,8 +418,10 @@ module.exports = ({ tickRate = 20, idName = 'id' } = {}) => {
     // GAME LOOP //
 
     engine.process = () => {
-        for(let i = 0; i < systems.length; i++)
+        for(let i = 0; i < systems.length; i++) {
             systems[i].process()
+            removalDeferrals()
+        }
     }
 
     const time = {
@@ -483,20 +443,20 @@ module.exports = ({ tickRate = 20, idName = 'id' } = {}) => {
 
         engine.emit('update', time.delta, time.tick)
 
-        processDeferrals()
+        registrationDeferrals()
 
         previous = time.now
         time.tick++
     }
 
     Object.assign(engine, {
+        ID_PROPERTY,
         createView,
         registerSystem,
         registerComponent,
         createEntity,
         addEntity,
         removeEntity,
-        getEntity,
         createComponent,
         addComponent,
         removeComponent,
@@ -508,7 +468,7 @@ module.exports = ({ tickRate = 20, idName = 'id' } = {}) => {
     engine.time = time
 
     engine.compile = () => {
-        processDeferrals()
+        registrationDeferrals()
     }
     
     /**
