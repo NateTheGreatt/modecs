@@ -197,7 +197,7 @@ module.exports = ({ tickRate = 20, idName = '__parentID' } = {}) => {
 
         views.forEach(view => {
             // if entity matches with view
-            if(bit.check(entityId_bitmask[id], view.bitmask)) {
+            if(bit.check(view.bitmask, entityId_bitmask[id])) {
                 // add entity to view and let view get components
                 view.add(id)
             }
@@ -230,7 +230,7 @@ module.exports = ({ tickRate = 20, idName = '__parentID' } = {}) => {
             // remove entity's component references from each relevant system
             views.forEach(view => {
                 // if entity matches with view
-                if(bit.check(entityId_bitmask[id], view.bitmask)) {
+                if(bit.check(view.bitmask, entityId_bitmask[id])) {
                     // remove entity from view
                     view.remove(id)
                 }
