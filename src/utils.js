@@ -23,7 +23,7 @@ const completeAssign = (target, ...sources) => {
 const shiftDelete = (array, i) => {
     let stop = array.length - 1
     while(i < stop) array[i] = array[++i]
-    array.pop()
+    return array.pop()
 }
 
 const hrtimeMs = () => {

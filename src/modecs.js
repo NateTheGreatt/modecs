@@ -104,37 +104,38 @@ module.exports = ({ tickRate = 20, idName = '__parentID' } = {}) => {
      * @param {string} type of the component
      * @param {object} shape of the component
      */
-    const registerComponent = (type, shape) => registerComponentDeferrals.push(() => {
+    const registerComponent = (type, shape) => {
+        // registerComponentDeferrals.push(() => {
+            // re-registration
+            if(component_store.hasOwnProperty(type)) {
+                const shapeKeys = Object.keys(shape)
 
-        // re-registration
-        if(component_store.hasOwnProperty(type)) {
-            const shapeKeys = Object.keys(shape)
+                // update each existing component with the new shape
+                component_store[type].forEach(component => {
+                    const cKeys = Object.keys(component)
+                    // only apply new properties to the existing component (composite)
+                    const newKeys = shapeKeys.filter(key => !cKeys.includes(key))
+                    newKeys.forEach(key => { component[key] = shape[key] })
+                })
 
-            // update each existing component with the new shape
-            component_store[type].forEach(component => {
-                const cKeys = Object.keys(component)
-                // only apply new properties to the existing component (composite)
-                const newKeys = shapeKeys.filter(key => !cKeys.includes(key))
-                newKeys.forEach(key => { component[key] = shape[key] })
-            })
+                component_shape[type] = shape
 
-            component_shape[type] = shape
+            } else {
 
-        } else {
+                componentCount++
+                component_store[type] = []
+                component_shape[type] = shape
+                component_entityId[type] = []
 
-            componentCount++
-            component_store[type] = []
-            component_shape[type] = shape
-            component_entityId[type] = []
+                component_bitflag[type] = bitflag
+                bitflags.push(bitflag)
 
-            component_bitflag[type] = bitflag
-            bitflags.push(bitflag)
+                bitflag = 1 << componentCount // shift the bitflag by an offset of N components for next call
+            }
 
-            bitflag = 1 << componentCount // shift the bitflag by an offset of N components for next call
-        }
-
-        engine.emit('component-registered', type, shape, bitflag)
-    })
+            engine.emit('component-registered', type, shape, bitflag)
+        // })
+    }
 
     const shapeWithValues = (shape, values={}) => Object.keys(shape)
         .reduce((acc,key) => {
@@ -219,7 +220,7 @@ module.exports = ({ tickRate = 20, idName = '__parentID' } = {}) => {
         removeComponentDeferrals.push(() => {
 
             const index = component_store[type].findIndex(c => c[ID_PROPERTY] == id)
-            const component = component_store[type].splice(index, 1)[0]
+            const component = shiftDelete(component_store[type], index)
             if(!component) {
                 throw `Component type ${type} does not exist on entity${id}`
             }
@@ -293,13 +294,19 @@ module.exports = ({ tickRate = 20, idName = '__parentID' } = {}) => {
      * @param  {...string} componentTypes to create a view of
      */
     const createView = (...componentTypes) => {
+
         const bitmask = createBitmask(...componentTypes)
+        
+        const existingView = views.find(view => bit.check(view.mask, bitmask))
+        if(existingView) {
+            return existingView
+        }
+
         const cache = query(...componentTypes)
 
         const localEntities = cache[componentTypes[0]].map(c => c[ID_PROPERTY])
         
         const view = {
-            cache,
             bitmask,
             entities: localEntities,
             add: (id, swap=false) => {
@@ -333,6 +340,8 @@ module.exports = ({ tickRate = 20, idName = '__parentID' } = {}) => {
             }
         }
 
+        Object.assign(view, cache)
+
         views.push(view)
 
         return view
@@ -350,55 +359,57 @@ module.exports = ({ tickRate = 20, idName = '__parentID' } = {}) => {
      * @param {boolean} [swap=true] BUGGED swap components into a local memory space (tends to increase performance)
      */
     const registerSystemDeferrals = []
-    const registerSystem = (name, componentTypes, setup, frequency, swap=false) => registerSystemDeferrals.push(() => {
-        const updateFn = setup()
-        const arity = componentTypes.length
+    const registerSystem = (name, componentTypes, setup, frequency, swap=false) => {
+        // registerSystemDeferrals.push(() => {
+            const updateFn = setup()
+            const arity = componentTypes.length
 
-        const view = createView(...componentTypes)
+            const view = createView(...componentTypes)
 
-        const parameters = componentTypes.map(type => view.cache[type])
-        
-        let update
+            const parameters = componentTypes.map(type => view[type])
+            
+            let update
 
-             if(arity==1) update = (i, id)=> updateFn(parameters[0][i], id)
-        else if(arity==2) update = (i, id)=> updateFn(parameters[0][i], parameters[1][i], id)
-        else if(arity==3) update = (i, id)=> updateFn(parameters[0][i], parameters[1][i], parameters[2][i], id)
-        else if(arity==4) update = (i, id)=> updateFn(parameters[0][i], parameters[1][i], parameters[2][i], parameters[3][i], id)
-        else if(arity==5) update = (i, id)=> updateFn(parameters[0][i], parameters[1][i], parameters[2][i], parameters[3][i], parameters[4][i], id)
-        else if(arity==6) update = (i, id)=> updateFn(parameters[0][i], parameters[1][i], parameters[2][i], parameters[3][i], parameters[4][i], parameters[5][i], id)
+                if(arity==1) update = (i, id)=> updateFn(parameters[0][i], id)
+            else if(arity==2) update = (i, id)=> updateFn(parameters[0][i], parameters[1][i], id)
+            else if(arity==3) update = (i, id)=> updateFn(parameters[0][i], parameters[1][i], parameters[2][i], id)
+            else if(arity==4) update = (i, id)=> updateFn(parameters[0][i], parameters[1][i], parameters[2][i], parameters[3][i], id)
+            else if(arity==5) update = (i, id)=> updateFn(parameters[0][i], parameters[1][i], parameters[2][i], parameters[3][i], parameters[4][i], id)
+            else if(arity==6) update = (i, id)=> updateFn(parameters[0][i], parameters[1][i], parameters[2][i], parameters[3][i], parameters[4][i], parameters[5][i], id)
 
-        let frequencyCounter = frequency
-        const system = {
-            name,
-            componentTypes,
-            bitmask: view.bitmask,
-            entities: view.entities,
-            prioritize: view.prioritize,
-            add: entity => {
-                view.add(entity, swap)
-            },
-            remove: entity => {
-                view.remove(entity)
-            },
-            process: () => {
-                // frequencyCounter -= engine.time.delta
-                // process system logic
-                for(let i = 0; i < view.entities.length; i++) {
-                    update(i, view.entities[i])
+            let frequencyCounter = frequency
+            const system = {
+                name,
+                componentTypes,
+                bitmask: view.bitmask,
+                entities: view.entities,
+                prioritize: view.prioritize,
+                add: entity => {
+                    view.add(entity, swap)
+                },
+                remove: entity => {
+                    view.remove(entity)
+                },
+                process: () => {
+                    // frequencyCounter -= engine.time.delta
+                    // process system logic
+                    for(let i = 0; i < view.entities.length; i++) {
+                        update(i, view.entities[i])
+                    }
                 }
             }
-        }
 
-        const existingIndex = systems.findIndex(s => s.name == name)
-        if(existingIndex !== -1) systems[existingIndex] = system
-        else systems.push(system)
-        
-        systems[name.toLowerCase()] = system
+            const existingIndex = systems.findIndex(s => s.name == name)
+            if(existingIndex !== -1) systems[existingIndex] = system
+            else systems.push(system)
+            
+            systems[name.toLowerCase()] = system
 
-        engine.emit('system-registered', system)
+            engine.emit('system-registered', system)
 
-        return system
-    })
+            return system
+        // })
+    }
 
     const registrationDeferrals = () => {
         while(registerComponentDeferrals.length > 0)
@@ -408,10 +419,10 @@ module.exports = ({ tickRate = 20, idName = '__parentID' } = {}) => {
     }
 
     const removalDeferrals = () => {
-        while(removeEntityDeferrals.length > 0)
-            removeEntityDeferrals.shift()()
         while(removeComponentDeferrals.length > 0)
             removeComponentDeferrals.shift()()
+        while(removeEntityDeferrals.length > 0)
+            removeEntityDeferrals.shift()()
     }
 
 
@@ -443,7 +454,7 @@ module.exports = ({ tickRate = 20, idName = '__parentID' } = {}) => {
 
         engine.emit('update', time.delta, time.tick)
 
-        registrationDeferrals()
+        // registrationDeferrals()
 
         previous = time.now
         time.tick++
@@ -468,7 +479,7 @@ module.exports = ({ tickRate = 20, idName = '__parentID' } = {}) => {
     engine.time = time
 
     engine.compile = () => {
-        registrationDeferrals()
+        // registrationDeferrals()
     }
     
     /**
