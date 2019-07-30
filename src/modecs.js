@@ -473,11 +473,13 @@ module.exports = ({
         // populate systems (and thereby views as well)
         systems = Object.keys(system_source)
             .map(name => {
-                registerSystem(
-                    name,
-                    system_types[name],
-                    eval(system_source[name])
-                )
+                eval(```
+                    registerSystem(
+                        name,
+                        system_types[name],
+                        ${system_source[name]}
+                    )
+                ```)
             })
 
     }
