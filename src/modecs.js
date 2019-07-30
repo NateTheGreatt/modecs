@@ -253,7 +253,8 @@ module.exports = ({
      */
     const componentRemovalQueue = []
 
-    const _removeComponent = (index, type) => {
+    const _removeComponent = (id, type) => {
+        const index = component_store[type].findIndex(c => c[ID_PROPERTY] == id)
         const component = component_store[type][index]
         
         if(!component) {
@@ -261,8 +262,6 @@ module.exports = ({
         }
 
         shiftDelete(component_store[type], index)
-
-        const id = component[ID_PROPERTY]
 
         const flag = component_bitflag[type]
 
@@ -289,9 +288,8 @@ module.exports = ({
         if(id === undefined || entities[id] === undefined)
             throw `Entity ID is undefined`
 
-        const index = component_store[type].findIndex(c => c[ID_PROPERTY] == id)
-        if(now) _removeComponent(index, type)
-        componentRemovalQueue.push(() => _removeComponent(index, type))
+        if(now) _removeComponent(id, type)
+        componentRemovalQueue.push(() => _removeComponent(id, type))
     }
     
     /**
