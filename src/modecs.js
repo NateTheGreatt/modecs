@@ -123,6 +123,8 @@ module.exports = ({
         if(id === undefined || entities[id] === undefined)
             throw `Entity ID is undefined`
 
+        engine.emit('entity-removed::before', id)
+
         typesFromMask(entityId_bitmask[id])
             .forEach(type => {
                 removeComponent(id, type, now)
@@ -258,7 +260,8 @@ module.exports = ({
         const component = component_store[type][index]
         
         if(!component) {
-            throw `Component type ${type} does not exist on entity${id}`
+            // throw `Component type ${type} does not exist on entity${id}`
+            return
         }
 
         shiftDelete(component_store[type], index)
@@ -375,7 +378,9 @@ module.exports = ({
                 // index to remove should be the same for entity and each component
                 const i = localEntities.findIndex(id2 => id == id2)
 
-                if(i == undefined) return
+                if(i === -1) return
+
+                if(i === undefined) return
                 
                 shiftDelete(localEntities, i)
                 
@@ -473,8 +478,8 @@ module.exports = ({
             .map(name => {
                 eval(```
                     registerSystem(
-                        name,
-                        system_types[name],
+                        ${name},
+                        ${system_types[name]},
                         ${system_source[name]}
                     )
                 ```)
