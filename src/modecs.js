@@ -314,7 +314,7 @@ module.exports = ({
     const updateComponent = (id, type, values) => {
         return Object.assign(
             component_entityId[type][id], 
-            shapeWithValues(component_shape[type], values)
+            values
         )
     }
 
