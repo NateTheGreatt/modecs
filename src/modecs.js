@@ -314,7 +314,7 @@ module.exports = ({
     const updateComponent = (id, type, values) => {
         return Object.assign(
             component_entityId[type][id], 
-            shapeWithValues(component_shape[type], values)
+            shapeWithValues(component_entityId[type][id], values)
         )
     }
 
@@ -424,22 +424,16 @@ module.exports = ({
             system_types[name] = componentTypes
             
             const updateFn = setup()
-            const arity = componentTypes.length
+            const arity = componentTypes.length > 64 ? 64 : componentTypes.length
 
             const view = createView(...componentTypes)
             system_view[name] = view
 
             const parameters = componentTypes.map(type => view[type])
             system_parameters[name] = parameters
-            
-            let update
 
-                if(arity==1) update = (i, id)=> updateFn(parameters[0][i], id)
-            else if(arity==2) update = (i, id)=> updateFn(parameters[0][i], parameters[1][i], id)
-            else if(arity==3) update = (i, id)=> updateFn(parameters[0][i], parameters[1][i], parameters[2][i], id)
-            else if(arity==4) update = (i, id)=> updateFn(parameters[0][i], parameters[1][i], parameters[2][i], parameters[3][i], id)
-            else if(arity==5) update = (i, id)=> updateFn(parameters[0][i], parameters[1][i], parameters[2][i], parameters[3][i], parameters[4][i], id)
-            else if(arity==6) update = (i, id)=> updateFn(parameters[0][i], parameters[1][i], parameters[2][i], parameters[3][i], parameters[4][i], parameters[5][i], id)
+            const args = componentTypes.map((t,i) => parameters[i])
+            const update = (i, id) => updateFn(...args.map(arg => arg[i]), id)
 
             let frequencyCounter = frequency
             const system = {
@@ -467,7 +461,6 @@ module.exports = ({
     const takeSnapshot = () => JSON.stringify({
         data
     },null,2)
-
 
     // hydrate
     if(snapshot) {
