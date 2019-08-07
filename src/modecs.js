@@ -1,11 +1,13 @@
 const EventEmitter = require('eventemitter3')
-const bit = require('./bitmasking')
 const {
     shiftDelete,
     hrtimeMs,
     isServer,
     isClient
 } = require('./utils')
+
+const bit = require('./bitmasking')
+const BitSet = require('bitset')
 
 /**
  * Creates an new instance of the Modecs engine (no need to invoke with 'new')
@@ -81,9 +83,9 @@ module.exports = ({
 
     // UTILS //
 
-    const createBitmask = (...componentTypes) => componentTypes.reduce((mask, type) => mask | component_bitflag[type], 0)
+    const createBitmask = (...componentTypes) => componentTypes.reduce((bitset, type) => bitset.set(component_bitflag[type]), new BitSet)
 
-    const typesFromMask = bitmask => Object.keys(component_bitflag).filter(type => bit.has(bitmask, component_bitflag[type]))
+    const typesFromMask = bitmask => Object.keys(component_bitflag).filter(type => bitmask.get(component_bitflag[type]))
 
     // ENTITIES //
     let entityIdCount = 0
@@ -98,9 +100,10 @@ module.exports = ({
      */
     const addEntity = id => {
         if(id === undefined)
-            throw `Entity ID is undefined`
+            throw new Error(`Entity ID is undefined`)
 
         entities[id] = id
+        entityId_bitmask[id] = new BitSet
 
         engine.emit('entity-added', id)
     }
@@ -121,7 +124,7 @@ module.exports = ({
 
     const removeEntity = (id, now=false) => {
         if(id === undefined || entities[id] === undefined)
-            throw `Entity ID is undefined`
+            throw new Error(`Entity ID is undefined`)
 
         engine.emit('entity-removed::before', id)
 
@@ -165,9 +168,11 @@ module.exports = ({
             component_shape[type] = shape
             component_entityId[type] = []
 
-            component_bitflag[type] = bitflag
+            component_bitflag[type] = componentCount++
+            // component_bitflag[type] = new BitSet().set(componentCount, 1)
+            // component_bitflag[type] = bitflag
 
-            bitflag = 1 << componentCount // shift the bitflag by an offset of N components for next call
+            // bitflag = 1 << componentCount // shift the bitflag by an offset of N components for next call
         }
 
         engine.emit('component-registered', type, shape, bitflag)
@@ -189,7 +194,7 @@ module.exports = ({
         const shape = component_shape[type]
 
         if(shape == undefined)
-            throw `Tried to create an unregistered component type '${type}'`
+            throw new Error(`Tried to create an unregistered component type '${type}'`)
         
         const component = shapeWithValues(shape, values)
         
@@ -209,14 +214,14 @@ module.exports = ({
      */
     const addComponent = (id, type, values={}) => {
         if(entities[id] == undefined)
-            throw `Attempted to add a component to a non-existent entity.`
+            throw new Error(`Attempted to add a component to a non-existent entity.`)
         if(!component_bitflag.hasOwnProperty(type)) 
-            throw `Tried to add an unregistered component type '${type}'`
+            throw new Error(`Tried to add an unregistered component type '${type}'`)
 
         const flag = component_bitflag[type]
 
         // if it already has the component, set values (if any) and return
-        if(bit.has(entityId_bitmask[id], flag)) {
+        if(entityId_bitmask[id].get(flag)) {
             return updateComponent(id, type, values)
         }
 
@@ -224,15 +229,15 @@ module.exports = ({
         
         component[ID_PROPERTY] = id
 
-        entityId_bitmask[id] = bit.set(entityId_bitmask[id], flag)
+        entityId_bitmask[id].set(flag, 1)
 
         if(component_store[type] == undefined)
-            throw `Component type '${type}' is not registered.`
+            throw new Error(`Component type '${type}' is not registered.`)
 
         component_store[type].push(component)
 
         views
-            .filter(view => bit.has(view.bitmask, flag))
+            .filter(view => view.bitmask.get(flag))
             .forEach(view => {
                 // if entity matches with view
                 if(bit.check(entityId_bitmask[id], view.bitmask)) {
@@ -260,7 +265,7 @@ module.exports = ({
         const component = component_store[type][index]
         
         if(!component) {
-            // throw `Component type ${type} does not exist on entity${id}`
+            // throw new Error(`Component type ${type} does not exist on entity${id}`)
             return
         }
 
@@ -270,13 +275,9 @@ module.exports = ({
 
         // remove entity's component references from each relevant system
         views
-            .filter(view => bit.has(view.bitmask, flag))
+            .filter(view => view.bitmask.get(flag))
             .forEach(view => {
-                // if entity matches with view
-                if(bit.has(view.bitmask, flag)) {
-                    // remove entity from view
-                    view.remove(id)
-                }
+                view.remove(id)
             })
         
         delete component_entityId[type][id]
@@ -289,7 +290,7 @@ module.exports = ({
 
     const removeComponent = (id, type, now=false) => {
         if(id === undefined || entities[id] === undefined)
-            throw `Entity ID is undefined`
+            throw new Error(`Entity ID is undefined`)
 
         if(now) _removeComponent(id, type)
         componentRemovalQueue.push(() => _removeComponent(id, type))
@@ -331,7 +332,7 @@ module.exports = ({
         const queryMask = createBitmask(...componentTypes)
         return componentTypes.reduce((acc,type) => {
             if(!component_store.hasOwnProperty(type))
-                throw `'${type}' is not a registered component type`
+                throw new Error(`'${type}' is not a registered component type`)
             return Object.assign(acc, { [type]: component_store[type].filter(entityBitmaskComponentFilter(queryMask)) });
         }, {})
     }
@@ -349,7 +350,7 @@ module.exports = ({
         const bitmask = createBitmask(...componentTypes)
 
         // existing view
-        const existingView = views.find(view => bit.check(view.mask, bitmask))
+        const existingView = views.find(view => view.bitmask.equals(bitmask))
         if(existingView) {
             return existingView
         }
