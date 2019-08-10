@@ -10,6 +10,14 @@ const bit = require('./bitmasking')
 const BitSet = require('bitset')
 
 /**
+ * Data-Oriented variable naming schemes:
+ * 
+ * regularObject = {}
+ * hash_map = {}
+ * $_structure_of_arrays = {}
+ */
+
+/**
  * Creates an new instance of the Modecs engine (no need to invoke with 'new')
  * @param {object} options to pass into the engine
  * @returns {object} a new engine
@@ -29,6 +37,7 @@ module.exports = ({
 
     // ARRAYS & HASHMAPS // 
 
+    // allocate memory for all of the data in the engine
     let data = {
         // entity IDs are the index
         entities: [],
@@ -36,37 +45,32 @@ module.exports = ({
         // entity[ID_PROPERTY_NAME] => bitmask
         entityId_bitmask: {},
         
-        bitmask_entityIds: {},
-
-        component_store: {}, // arrays of component instances per type,
-        component_shape: {}, // shapes per type,
-        component_bitflag: {}, // component name to bitflag,
-        component_entityId: {},
-
+        $_component_store: {}, // arrays of component instances per component type (SoAoS)
+        component_shape: {}, // shapes per type (hashmap)
+        component_bitflag: {}, // component name to bitflag (hashmap)
+        $_component_entityId: {}, // arrays of entity IDs per component type (SoA)
 
         view_bitmask: {},
         view_entities: {},
         view_components: {},
-        
         views: [],
-        
 
         system_types: {},
         system_view: {},
         system_parameters: {},
         system_source: {},
-        
         systems: []
     }
 
+    // bring into local scope
     let {
         entities,
         entityId_bitmask,
         
-        component_store, // arrays of component instances per type,
-        component_shape, // shapes per type,
-        component_bitflag, // component name to bitflag,
-        component_entityId,
+        $_component_store,
+        component_shape,
+        component_bitflag,
+        $_component_entityId,
 
         view_bitmask,
         view_entities,
@@ -139,7 +143,6 @@ module.exports = ({
     
     // COMPONENTS //
     
-    let bitflag = 1
     let componentCount = 0
     /**
      * Registers a new type of component with the engine
@@ -148,11 +151,11 @@ module.exports = ({
      */
     const registerComponent = (type, shape) => {
         // re-registration
-        if(component_store.hasOwnProperty(type)) {
+        if($_component_store.hasOwnProperty(type)) {
             const shapeKeys = Object.keys(shape)
 
             // update each existing component with the new shape
-            component_store[type].forEach(component => {
+            $_component_store[type].forEach(component => {
                 const cKeys = Object.keys(component)
                 // only apply new properties to the existing component (composite)
                 const newKeys = shapeKeys.filter(key => !cKeys.includes(key))
@@ -164,18 +167,14 @@ module.exports = ({
         } else {
 
             componentCount++
-            component_store[type] = []
+            $_component_store[type] = []
             component_shape[type] = shape
-            component_entityId[type] = []
+            $_component_entityId[type] = []
 
             component_bitflag[type] = componentCount++
-            // component_bitflag[type] = new BitSet().set(componentCount, 1)
-            // component_bitflag[type] = bitflag
-
-            // bitflag = 1 << componentCount // shift the bitflag by an offset of N components for next call
         }
 
-        engine.emit('component-registered', type, shape, bitflag)
+        engine.emit('component-registered', type, shape, componentCount)
     }
 
     const shapeWithValues = (shape, values={}) => Object.keys(shape)
@@ -215,6 +214,7 @@ module.exports = ({
     const addComponent = (id, type, values={}) => {
         if(entities[id] == undefined)
             throw new Error(`Attempted to add a component to a non-existent entity.`)
+
         if(!component_bitflag.hasOwnProperty(type)) 
             throw new Error(`Tried to add an unregistered component type '${type}'`)
 
@@ -231,10 +231,10 @@ module.exports = ({
 
         entityId_bitmask[id].set(flag, 1)
 
-        if(component_store[type] == undefined)
+        if($_component_store[type] == undefined)
             throw new Error(`Component type '${type}' is not registered.`)
 
-        component_store[type].push(component)
+        $_component_store[type].push(component)
 
         views
             .filter(view => view.bitmask.get(flag))
@@ -246,7 +246,7 @@ module.exports = ({
                 }
             })
 
-        component_entityId[type][id] = component
+        $_component_entityId[type][id] = component
 
         engine.emit('component-added', component, id)
         
@@ -255,32 +255,31 @@ module.exports = ({
 
     /**
      * Remove a component from an entity
-     * @param {number} entityId to remove the component from
+     * @param {number} id to remove the component from
      * @param {string} type of component to remove from the entity
      */
     const componentRemovalQueue = []
 
     const _removeComponent = (id, type) => {
-        const index = component_store[type].findIndex(c => c[ID_PROPERTY] == id)
-        const component = component_store[type][index]
+        const index = $_component_store[type].findIndex(c => c[ID_PROPERTY] == id)
+        const component = $_component_store[type][index]
         
         if(!component) {
             // throw new Error(`Component type ${type} does not exist on entity${id}`)
             return
         }
 
-        shiftDelete(component_store[type], index)
+        shiftDelete($_component_store[type], index)
 
         const flag = component_bitflag[type]
 
         // remove entity's component references from each relevant system
-        views
-            .filter(view => view.bitmask.get(flag))
-            .forEach(view => {
+        views.forEach(view => {
+            if(view.bitmask.get(flag))
                 view.remove(id)
-            })
+        })
         
-        delete component_entityId[type][id]
+        delete $_component_entityId[type][id]
 
         // clear the bitflag and index on the entity
         entityId_bitmask[id] = bit.clear(entityId_bitmask[id], flag)
@@ -303,7 +302,7 @@ module.exports = ({
      * @returns {object} a component
      */
     const getComponent = (id, type) => {
-        return component_entityId[type][id]
+        return $_component_entityId[type][id]
     }
 
     /**
@@ -314,8 +313,8 @@ module.exports = ({
      */
     const updateComponent = (id, type, values) => {
         return Object.assign(
-            component_entityId[type][id], 
-            shapeWithValues(component_entityId[type][id], values)
+            $_component_entityId[type][id], 
+            shapeWithValues($_component_entityId[type][id], values)
         )
     }
 
@@ -331,9 +330,9 @@ module.exports = ({
     const query = (...componentTypes) => {
         const queryMask = createBitmask(...componentTypes)
         return componentTypes.reduce((acc,type) => {
-            if(!component_store.hasOwnProperty(type))
+            if(!$_component_store.hasOwnProperty(type))
                 throw new Error(`'${type}' is not a registered component type`)
-            return Object.assign(acc, { [type]: component_store[type].filter(entityBitmaskComponentFilter(queryMask)) });
+            return Object.assign(acc, { [type]: $_component_store[type].filter(entityBitmaskComponentFilter(queryMask)) });
         }, {})
     }
     
@@ -359,21 +358,31 @@ module.exports = ({
         const signature = createSignature(...componentTypes)
         view_bitmask[signature] = bitmask
 
-        const cache = query(...componentTypes)
-        view_components[signature] = cache
+        const $_cache = query(...componentTypes)
+        view_components[signature] = $_cache
 
-        const localEntities = cache[componentTypes[0]].map(c => c[ID_PROPERTY])
+        const localEntities = $_cache[componentTypes[0]].map(c => c[ID_PROPERTY])
         view_entities[signature] = localEntities
         
         const view = {
             bitmask,
             entities: localEntities,
+            onEnter: id => {},
+            onExit: id => {},
             add: (id, swap=false) => {
                 localEntities.push(id)
                 
+                const components = []
                 componentTypes.forEach(type => {
-                    cache[type].push(component_store[type].find(c => c[ID_PROPERTY] == id))
+                    const c = $_component_store[type].find(c => c[ID_PROPERTY] == id)
+                    if(c === undefined)
+                        throw new Error(`${type} component not found on entity.`)
+
+                    $_cache[type].push(c)
+                    components.push(c)
                 })
+
+                view.onEnter(...components, id)
             },
             remove: id => {
                 // index to remove should be the same for entity and each component
@@ -385,15 +394,22 @@ module.exports = ({
                 
                 shiftDelete(localEntities, i)
                 
+                const components = []
                 componentTypes.forEach(type => {
-                    shiftDelete(cache[type], i)
+
+                    const c = $_component_store[type].find(c => c[ID_PROPERTY] == id)
+                    components.push(c)
+
+                    shiftDelete($_cache[type], i)
                 })
+
+                view.onExit(...components, id)
             },
             // sort global arrays with this bitmask grouped together at the beginning of the array
             // should prioritize views with the most entities (group components at the beginning of their arrays by this bitmask)
             prioritize: () => {
                 componentTypes.forEach(type => {
-                    component_store[type].sort((a,b) => {
+                    $_component_store[type].sort((a,b) => {
                         const maskA = entityId_bitmask[a]
                         return bit.check(maskA, bitmask)
                     })
@@ -401,7 +417,7 @@ module.exports = ({
             }
         }
 
-        Object.assign(view, cache)
+        Object.assign(view, $_cache)
 
         views.push(view)
 
@@ -416,19 +432,29 @@ module.exports = ({
      * @param {string} name of the system
      * @param {string[]} componentTypes that the system requires an entity to have
      * @param {function} setup function to call when the engine starts
-     * @param {number} frequency of the system in millihertz (invoked every N milliseconds)
-     * @param {boolean} [swap=true] BUGGED swap components into a local memory space (tends to increase performance)
      */
-    const registerSystem = (name, componentTypes, setup, frequency, swap=false) => {
+    const registerSystem = (name, componentTypes, setup, swap=false) => {
         // registerSystemDeferrals.push(() => {
+
             system_source[name] = setup.toString()
             system_types[name] = componentTypes
-            
-            const updateFn = setup()
-            const arity = componentTypes.length > 64 ? 64 : componentTypes.length
 
+            const o = setup()
+
+            let updateFn, enterFn, exitFn
+            if(typeof o === 'function') {
+                updateFn = setup()
+            } else {
+                updateFn = o.update
+                enterFn = o.enter
+                exitFn = o.exit
+            }
+            
             const view = createView(...componentTypes)
             system_view[name] = view
+
+            if(enterFn) view.onEnter = enterFn
+            if(exitFn) view.onExit = exitFn
 
             const parameters = componentTypes.map(type => view[type])
             system_parameters[name] = parameters
@@ -436,14 +462,11 @@ module.exports = ({
             const args = componentTypes.map((t,i) => parameters[i])
             const update = (i, id) => updateFn(...args.map(arg => arg[i]), id)
 
-            let frequencyCounter = frequency
             const system = {
                 process: () => {
-                    // frequencyCounter -= engine.time.delta
-                    // process system logic
-                    for(let i = 0; i < view.entities.length; i++) {
+                    if(updateFn !== undefined)
+                    for(let i = 0; i < view.entities.length; i++)
                         update(i, view.entities[i])
-                    }
                 }
             }
 
@@ -483,10 +506,10 @@ module.exports = ({
 
     const removalDeferrals = () => {
         while(componentRemovalQueue.length > 0){
-            componentRemovalQueue.shift()() // shift boobies
+            componentRemovalQueue.shift()()
         }
         while(entityRemovalQueue.length > 0){
-            entityRemovalQueue.shift()() // shift boobies
+            entityRemovalQueue.shift()()
         }
     }
 
@@ -528,7 +551,6 @@ module.exports = ({
         createView,
         registerSystem,
         registerComponent,
-        compile: () => {},
         createEntity,
         addEntity,
         removeEntity,

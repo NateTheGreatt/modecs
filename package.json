@@ -1,6 +1,6 @@
 {
   "name": "modecs",
-  "version": "0.1.9",
+  "version": "0.1.10",
   "description": "Small, fast, data-oriented, runtime-composable ECS library.",
   "main": "index.js",
   "module": "index.js",

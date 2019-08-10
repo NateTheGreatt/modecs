@@ -3,7 +3,7 @@ Small, fast, data-oriented, runtime-composable [ECS](https://en.wikipedia.org/wi
 
 Features
 
-  - < 5 KB gzipped
+  - ~5 KB gzipped
   - Classless ES6
   - Performance focused
   - Runtime composable
@@ -11,9 +11,9 @@ Features
 
 Planned
 
-  - [ ] Throttleable system update rates
   - [ ] Topological ordering of system loops based on component type dependencies
-  - [ ] Serializable state & external store adapters
+  - [x] Serializable state (all the way down to systems & their update functions)
+  - [ ] External store adapters
   - [ ] [V programming language](https://vlang.io/) port with Node bindings to the same API
 
 ## Install
@@ -54,10 +54,11 @@ const entityID1 = engine.createEntity()
 engine.addEntity(entityID1)
 
 const entityID2 = engine.createEntity()
+engine.addEntity(entityID2) // must add entity to the engine before adding components
+
 // add components to an ID with a name and shape
 engine.addComponent(entityID2, 'POSITION', { x: 50 })
 engine.addComponent(entityID2, 'TARGET', { x: 1, y: 1 }) // entity2 will move southeast
-engine.addEntity(entityID2)
 
 engine.start()
 ```
