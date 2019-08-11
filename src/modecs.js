@@ -40,7 +40,7 @@ module.exports = ({
     // allocate memory for all of the data in the engine
     let data = {
         // entity IDs are the index
-        entities: [],
+        entities: {},
         
         // entity[ID_PROPERTY_NAME] => bitmask
         entityId_bitmask: {},
