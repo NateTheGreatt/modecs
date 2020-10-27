@@ -1,3 +1,6 @@
+## DEPRECATED
+See https://github.com/NateTheGreatt/bitecs for my new high-performance ECS library
+
 # 🌌 ModECS 🌌 
 Small, fast, data-oriented, runtime-composable [ECS](https://en.wikipedia.org/wiki/Entity_component_system) library written in JavaScript.
 
